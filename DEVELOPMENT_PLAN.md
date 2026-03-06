@@ -1,94 +1,94 @@
-# План розробки MVP
+# MVP Development Plan
 
-## Продукт
-Конвертер банківських виписок:
+## Product
+Bank statement converter:
 - `MT940` / `CAMT.053` -> `CSV` / `XLSX` / `QBO`
 
-Ціль MVP: швидко запустити робочий SaaS для бухгалтерії/фінкоманд з безпечним зберіганням та базовою монетизацією.
+MVP goal: quickly launch a working SaaS for accounting/finance teams with secure storage and basic monetization.
 
 ---
 
-## Обраний стек
+## Chosen Tech Stack
 
 ### Web
 - **Next.js** (App Router, TypeScript)
-- **Hero UI** як базова UI library для всіх інтерфейсів
+- **Hero UI** as the base UI library for all interfaces
 
 ### Backend
 - **NestJS** (REST API, TypeScript)
-- **Auth0** для авторизації (OAuth2/OIDC)
+- **Auth0** for authorization (OAuth2/OIDC)
 
-### База даних
+### Database
 - **PostgreSQL**
-  - локально: Docker
-  - продакшн: AWS RDS (private)
+  - locally: Docker
+  - production: AWS RDS (private)
 
-### Storage для файлів
-- Локально: **MinIO** (S3-compatible)
-- Продакшн: **AWS S3**
+### File Storage
+- Locally: **MinIO** (S3-compatible)
+- Production: **AWS S3**
 
-### Черги/фонова обробка
-- **AWS SQS** + worker (NestJS або окремий сервіс)
-
----
-
-## UI стандарт (обов'язковий)
-
-- Усі зміни інтерфейсу виконувати через **Hero UI**.
-- Нові кнопки, форми, таблиці, модалки, алерти, дропдауни, таби та інші елементи робити на базі компонентів Hero UI.
-- Не додавати паралельні UI libraries (MUI, Ant, Chakra, shadcn тощо) без окремого рішення команди.
-- Кастомні стилі через `className`/теми Hero UI, але без порушення консистентності дизайн-системи.
-- Якщо потрібного компонента немає в Hero UI, спочатку перевірити composable-патерн на базі Hero UI primitives.
+### Queues/Background Processing
+- **AWS SQS** + worker (NestJS or separate service)
 
 ---
 
-## Архітектура (high-level)
+## UI Standard (mandatory)
 
-1. Користувач логіниться через Auth0.
-2. Frontend викликає API NestJS з `Bearer access_token`.
-3. API повертає `presigned URL` для upload.
-4. Файл завантажується напряму у S3/MinIO.
-5. API створює `job` у БД та ставить задачу в чергу.
+- All UI changes must be made through **Hero UI**.
+- New buttons, forms, tables, modals, alerts, dropdowns, tabs, and other elements must be built using Hero UI components.
+- Do not add parallel UI libraries (MUI, Ant, Chakra, shadcn, etc.) without a separate team decision.
+- Custom styles via `className`/Hero UI themes, but without breaking design system consistency.
+- If a required component is not available in Hero UI, first check the composable pattern based on Hero UI primitives.
+
+---
+
+## Architecture (high-level)
+
+1. User logs in via Auth0.
+2. Frontend calls NestJS API with `Bearer access_token`.
+3. API returns `presigned URL` for upload.
+4. File is uploaded directly to S3/MinIO.
+5. API creates a `job` in the database and enqueues the task.
 6. Worker:
-   - парсить MT940/CAMT.053,
-   - валідовує дані,
-   - генерує CSV/XLSX/QBO,
-   - зберігає експорт у storage.
-7. Користувач отримує статус і завантажує результат через short-lived signed URL.
+   - parses MT940/CAMT.053,
+   - validates data,
+   - generates CSV/XLSX/QBO,
+   - stores export in storage.
+7. User receives status and downloads the result via short-lived signed URL.
 
 ---
 
-## Безпека даних
+## Data Security
 
 ### Auth / API
-- Перевірка JWT у NestJS через JWKS (Auth0 issuer/audience/signature/exp).
-- Scope-based доступ:
+- JWT validation in NestJS via JWKS (Auth0 issuer/audience/signature/exp).
+- Scope-based access:
   - `jobs:write`
   - `jobs:read`
   - `exports:download`
 
-### База (RDS)
+### Database (RDS)
 - `PubliclyAccessible=false`
-- доступ тільки через приватні security groups
+- access only through private security groups
 - TLS (`sslmode=require`)
 - encryption at rest (KMS)
 - backups + point-in-time restore
-- секрети тільки в AWS Secrets Manager
+- secrets only in AWS Secrets Manager
 
-### Файли
-- Upload/download тільки через presigned URL
-- lifecycle policy (автовидалення raw/exports через 24-72 год)
-- без логування чутливого вмісту файлів
+### Files
+- Upload/download only via presigned URL
+- lifecycle policy (auto-deletion of raw/exports after 24–72 hours)
+- no logging of sensitive file contents
 
 ---
 
-## Локальна розробка
+## Local Development
 
-### Чому так
-- однаковий підхід до інфраструктури: локально S3-compatible storage і Postgres
-- менше відмінностей між dev і prod
+### Rationale
+- consistent approach to infrastructure: S3-compatible storage and Postgres locally
+- fewer differences between dev and prod
 
-### Docker compose (мінімальний приклад)
+### Docker Compose (minimal example)
 
 ```yaml
 services:
@@ -116,7 +116,7 @@ services:
       - ./data/minio:/data
 ```
 
-### Приклад env для dev
+### Example env for dev
 
 ```env
 # Database
@@ -140,103 +140,103 @@ S3_BUCKET_EXPORTS=exports
 
 ---
 
-## Scope MVP
+## MVP Scope
 
 ### Must-have
-- Upload `.mt940` та `.xml` (CAMT.053)
-- Автовизначення формату
-- Парсинг у нормалізовану модель транзакцій
+- Upload `.mt940` and `.xml` (CAMT.053)
+- Auto-detection of format
+- Parsing into normalized transaction model
 - Validation report (errors/warnings)
-- Export у CSV/XLSX/QBO
+- Export to CSV/XLSX/QBO
 - Auth0 login
-- Free/Pro обмеження
+- Free/Pro limits
 
-### Out of scope (після MVP)
-- Публічний API для третіх сторін
-- Масовий batch-processing великих архівів
-- Глибокі bank-specific профілі
+### Out of scope (post-MVP)
+- Public API for third parties
+- Mass batch-processing of large archives
+- Deep bank-specific profiles
 
 ---
 
-## План реалізації на 14 днів
+## 14-Day Implementation Plan
 
-### День 1-2: Основа
-- skeleton Next.js + NestJS
-- базове налаштування Hero UI у Next.js (provider, theme, базові компоненти layout)
-- PostgreSQL schema + міграції
+### Days 1–2: Foundation
+- Next.js + NestJS skeleton
+- basic Hero UI setup in Next.js (provider, theme, basic layout components)
+- PostgreSQL schema + migrations
 - Auth0 setup (app + API + scopes)
 
-### День 3-4: Auth end-to-end
-- login/logout на Next.js
-- JWT guard/scopes guard у NestJS
+### Days 3–4: Auth end-to-end
+- login/logout in Next.js
+- JWT guard/scopes guard in NestJS
 - `/me` endpoint
 
-### День 5-6: Upload pipeline
+### Days 5–6: Upload pipeline
 - `/uploads/init` (presigned URL)
-- upload у MinIO/S3
-- `jobs` + SQS інтеграція
+- upload to MinIO/S3
+- `jobs` + SQS integration
 
-### День 7-8: CAMT.053 parser
+### Days 7–8: CAMT.053 parser
 - XML parsing
-- мапінг у normalized transactions
-- preview у UI
+- mapping to normalized transactions
+- preview in UI
 
-### День 9-10: MT940 parser + validation
-- теги `:61:`, `:86:` тощо
-- правила валідації та помилки
+### Days 9–10: MT940 parser + validation
+- tags `:61:`, `:86:`, etc.
+- validation rules and errors
 
-### День 11: Експортери
+### Day 11: Exporters
 - CSV, XLSX, QBO
 - signed download links
 
-### День 12: Білінг
+### Day 12: Billing
 - Stripe Free/Pro
-- ліміти по плану
+- plan-based limits
 
-### День 13: Security hardening
+### Day 13: Security hardening
 - rate limit, CORS, helmet
-- логування без чутливих даних
+- logging without sensitive data
 - retention policy
 
-### День 14: Реліз
-- деплой web/api
+### Day 14: Release
+- deploy web/api
 - smoke tests
 - launch checklist
 
 ---
 
 ## Definition of Done (MVP)
-- Користувач логіниться через Auth0.
-- MT940/CAMT.053 файли стабільно обробляються.
-- Експорт у CSV/XLSX/QBO працює.
-- Дані безпечно зберігаються (DB + storage + secrets).
-- Є базові платні обмеження та готовність до продакшн-запуску.
+- User logs in via Auth0.
+- MT940/CAMT.053 files are processed reliably.
+- Export to CSV/XLSX/QBO works.
+- Data is stored securely (DB + storage + secrets).
+- Basic paid limits exist and the product is ready for production launch.
 
 ---
 
-## Інструкції для AI агентів (coding rules)
+## Instructions for AI Agents (coding rules)
 
-### Загальні правила
-- Писати код на TypeScript, дотримуючись поточної структури модулів.
-- Перед змінами перевіряти існуючі патерни в репозиторії і не ламати сумісність.
-- Для кожної нової фічі додавати мінімальні тести (unit/integration, якщо доречно).
-- Не комітити секрети, ключі, токени, приватні URI.
-- Усі конфіги через env-змінні з описом у документації.
+### General rules
+- Write code in TypeScript, following the current module structure.
+- Before making changes, check existing patterns in the repository and avoid breaking compatibility.
+- Add minimal tests (unit/integration, where appropriate) for each new feature.
+- Do not commit secrets, keys, tokens, or private URIs.
+- All configuration via env variables with documentation.
 
-### Правила для UI (обов'язково)
-- **Усі UI зміни виконувати тільки з Hero UI library.**
-- Не використовувати raw HTML-елементи як фінальні компоненти, якщо є еквівалент у Hero UI.
-- Не додавати інші UI frameworks або компонентні бібліотеки.
-- Підтримувати доступність: `label`, `aria-*`, keyboard navigation.
-- Нові сторінки повинні використовувати спільні UI-патерни (cards, forms, tables, alerts) через Hero UI.
+### UI rules (mandatory)
+- **All UI changes must be made only with the Hero UI library.**
+- Do not use raw HTML elements as final components if an equivalent exists in Hero UI.
+- Do not add other UI frameworks or component libraries.
+- Support accessibility: `label`, `aria-*`, keyboard navigation.
+- New pages must use shared UI patterns (cards, forms, tables, alerts) via Hero UI.
 
-### Правила для Next.js
-- Використовувати App Router та server/client components за потребою.
-- Форми з валідацією (zod/DTO схеми), коректна обробка loading/error states.
-- Не дублювати API-логіку у фронтенді; вся бізнес-логіка конвертації на бекенді.
+### Next.js rules
+- Use App Router and server/client components as needed.
+- Forms with validation (zod/DTO schemas), proper handling of loading/error states.
+- Do not duplicate API logic in the frontend; all conversion business logic stays on the backend.
 
-### Правила для NestJS
-- Кожен endpoint проходить через DTO + validation pipe.
-- Захист роутів через JWT guard + scopes guard.
-- Валідації, парсинг і експортери тримати в окремих сервісах (single responsibility).
-- Логи структуровані, без чутливих фінансових даних.
+### NestJS rules
+- Every endpoint goes through DTO + validation pipe.
+- Route protection via JWT guard + scopes guard.
+- Keep validations, parsing, and exporters in separate services (single responsibility).
+- Structured logs, no sensitive financial data.

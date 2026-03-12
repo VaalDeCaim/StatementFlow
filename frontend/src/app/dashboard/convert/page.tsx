@@ -381,7 +381,8 @@ export default function ConvertPage() {
                   key={f}
                   type="button"
                   onClick={() => setFormat(f)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium uppercase transition-colors ${
+                  disabled={isUploading || !!jobId}
+                  className={`rounded-full px-4 py-2 text-sm font-medium uppercase transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 ${
                     format === f
                       ? "bg-foreground text-background"
                       : "border border-default-200 bg-default text-default-600 hover:bg-default-100"

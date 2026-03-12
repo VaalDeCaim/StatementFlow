@@ -61,7 +61,7 @@ const mockPricing: PricingPackage[] = [
 
 const mockProfile: UserProfile = {
   id: "user_mock_1",
-  name: "Demo Founder",
+  name: "Founder",
   email: "founder@example.com",
   balance: 42,
   subscriptionStatus: "free",
@@ -88,6 +88,7 @@ export async function mockUploadInit(): Promise<UploadInitResponse> {
   return {
     uploadId: `upload_${Date.now()}`,
     presignedUrl: "https://s3.mock.example/presigned",
+    key: `mock/${Date.now()}`,
   };
 }
 

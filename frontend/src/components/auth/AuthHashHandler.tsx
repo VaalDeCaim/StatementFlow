@@ -25,7 +25,15 @@ export function AuthHashHandler() {
     const access_token = params.get("access_token");
     const refresh_token = params.get("refresh_token");
     const type = params.get("type");
-    const next = params.get("next") ?? (type === "recovery" ? "/reset-password" : "/onboarding");
+    const rawNext = params.get("next") ?? (type === "recovery" ? "/reset-password" : "/onboarding");
+    const allowedPaths = ["/onboarding", "/reset-password", "/dashboard"];
+    const next =
+      rawNext.startsWith("/") && !rawNext.includes("//") &&
+      (allowedPaths.includes(rawNext) || rawNext.startsWith("/onboarding/") || rawNext.startsWith("/dashboard/"))
+        ? rawNext
+        : type === "recovery"
+          ? "/reset-password"
+          : "/onboarding";
 
     if (!access_token || !refresh_token) return;
     // signup = email confirmation, recovery = password reset

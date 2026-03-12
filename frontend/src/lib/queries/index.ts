@@ -18,4 +18,8 @@ export {
   useCreateJob,
 } from "./use-convert";
 export { useBalance } from "./use-balance";
-export { useTopupBundles, useTopUpMutation } from "./use-topup";
+export {
+  useTopupBundles,
+  useTopUpMutation,
+  useCreateStripeCheckoutMutation,
+} from "./use-topup";

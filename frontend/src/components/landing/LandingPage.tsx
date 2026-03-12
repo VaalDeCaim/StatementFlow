@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { Button, Card, CardBody, CardHeader } from "@heroui/react";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 
 const iconClass = "size-5 shrink-0 text-default-500";
 
@@ -62,15 +63,26 @@ export function LandingPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-default-500">Statements parsed</span>
-                  <span className="font-medium text-foreground">248</span>
+                  <AnimatedCounter
+                    value={248}
+                    className="font-medium text-foreground"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-500">Accounts detected</span>
-                  <span className="font-medium text-foreground">12</span>
+                  <AnimatedCounter
+                    value={12}
+                    className="font-medium text-foreground"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-500">Avg. processing time</span>
-                  <span className="font-medium text-foreground">3.2s</span>
+                  <AnimatedCounter
+                    value={3.2}
+                    decimals={1}
+                    suffix="s"
+                    className="font-medium text-foreground"
+                  />
                 </div>
               </div>
             </CardBody>

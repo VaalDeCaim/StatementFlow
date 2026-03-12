@@ -25,6 +25,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    let body: { otp?: string } = {};
+    try {
+      body = (await req.json()) ?? {};
+    } catch {
+      // ignore invalid JSON
+    }
+    const otp = typeof body.otp === "string" ? body.otp.trim() : "";
+    if (!otp) {
+      return new Response(
+        JSON.stringify({ error: "OTP code is required to delete the account" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -59,35 +76,118 @@ Deno.serve(async (req) => {
       );
     }
 
+    const userEmail = user.email;
+    if (!userEmail) {
+      return new Response(
+        JSON.stringify({ error: "User email not found" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Verify email OTP with Auth before allowing delete (re-auth step)
+    const verifyRes = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: anonKey,
+      },
+      body: JSON.stringify({
+        type: "email",
+        token: otp,
+        email: userEmail,
+      }),
+    });
+    if (!verifyRes.ok) {
+      const verifyErr = await verifyRes.json().catch(() => ({}));
+      const message =
+        (verifyErr as { msg?: string }).msg ??
+        (verifyErr as { error_description?: string }).error_description ??
+        "Invalid or expired verification code. Request a new code and try again.";
+      return new Response(
+        JSON.stringify({ error: message }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const userId = user.id;
 
     // Service-role client for destructive operations
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Delete storage files in raw and exports buckets under this user's folder.
-    const buckets = ["raw", "exports"] as const;
+    // Fetch all jobs for this user so we can delete their raw uploads and exports.
+    const { data: jobs, error: jobsFetchError } = await supabaseAdmin
+      .from("jobs")
+      .select("id, raw_key, format")
+      .eq("user_id", userId);
 
-    for (const bucket of buckets) {
-      const { data: objects, error: listError } = await supabaseAdmin.storage
-        .from(bucket)
-        .list(userId, { limit: 1000, offset: 0, sortBy: { column: "name", order: "asc" } });
-
-      if (listError) {
-        // Log and continue; storage cleanup failures shouldn't block account deletion.
-        console.error(`Failed to list ${bucket} objects for user`, userId, listError);
-      } else if (objects && objects.length > 0) {
-        const paths = objects.map((o) => `${userId}/${o.name}`);
-        const { error: removeError } = await supabaseAdmin.storage
-          .from(bucket)
-          .remove(paths);
-
-        if (removeError) {
-          console.error(`Failed to remove ${bucket} objects for user`, userId, removeError);
+    if (!jobsFetchError && jobs && jobs.length > 0) {
+      const rawPaths: string[] = [];
+      const exportPaths: string[] = [];
+      for (const job of jobs) {
+        if (job.raw_key && typeof job.raw_key === "string") {
+          rawPaths.push(job.raw_key);
+        }
+        const exportPath = `${userId}/${job.id}/statement.${job.format ?? "csv"}`;
+        exportPaths.push(exportPath);
+      }
+      if (rawPaths.length > 0) {
+        const { error: rawRemoveError } = await supabaseAdmin.storage
+          .from("raw")
+          .remove(rawPaths);
+        if (rawRemoveError) {
+          console.error("Failed to remove raw objects for user", userId, rawRemoveError);
+        }
+      }
+      if (exportPaths.length > 0) {
+        const { error: exportRemoveError } = await supabaseAdmin.storage
+          .from("exports")
+          .remove(exportPaths);
+        if (exportRemoveError) {
+          console.error("Failed to remove export objects for user", userId, exportRemoveError);
         }
       }
     }
 
-    // Optionally delete all jobs explicitly (also covered by ON DELETE CASCADE).
+    // Remove any remaining storage under user folder (e.g. orphaned or list-only uploads).
+    const buckets = ["raw", "exports"] as const;
+    for (const bucket of buckets) {
+      const { data: topLevel, error: listError } = await supabaseAdmin.storage
+        .from(bucket)
+        .list(userId, { limit: 1000 });
+
+      if (listError) {
+        console.error(`Failed to list ${bucket} for user`, userId, listError);
+        continue;
+      }
+      if (!topLevel?.length) continue;
+
+      const toRemove: string[] = [];
+      for (const item of topLevel) {
+        const prefix = `${userId}/${item.name}`;
+        if (item.id != null) {
+          toRemove.push(prefix);
+        } else {
+          const { data: nested } = await supabaseAdmin.storage.from(bucket).list(prefix, { limit: 500 });
+          if (nested?.length) {
+            for (const file of nested) {
+              toRemove.push(`${prefix}/${file.name}`);
+            }
+          }
+        }
+      }
+      if (toRemove.length > 0) {
+        const { error: removeError } = await supabaseAdmin.storage.from(bucket).remove(toRemove);
+        if (removeError) console.error(`Failed to remove ${bucket} remainder for user`, userId, removeError);
+      }
+    }
+
+    // Delete all jobs for this user.
     const { error: jobsError } = await supabaseAdmin
       .from("jobs")
       .delete()

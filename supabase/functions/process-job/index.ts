@@ -8,6 +8,14 @@ declare const Deno: {
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  buildCsv,
+  buildQbo,
+  buildXlsxAoA,
+  parseCamt053,
+  parseMt940,
+  type ParsedEntry,
+} from "../_shared/statements.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -78,17 +86,19 @@ Deno.serve(async (req) => {
     const validationWarnings: string[] = [];
     let accounts = 0;
     let transactions = 0;
+    let parsedTransactions: ParsedEntry[] = [];
 
     if (formatDetected === "mt940") {
+      parsedTransactions = parseMt940(content);
       const lines = content.split(/\r?\n/);
       const accMatches = lines.filter((l) => l.startsWith(":25:")).length;
       accounts = Math.max(1, accMatches);
-      const txMatches = lines.filter((l) => l.startsWith(":61:")).length;
-      transactions = txMatches;
+      transactions = parsedTransactions.length;
       if (transactions === 0) validationWarnings.push("No transactions found in MT940");
     } else if (formatDetected === "camt053") {
+      parsedTransactions = parseCamt053(content);
       accounts = (content.match(/<Acct>/g) ?? []).length;
-      transactions = (content.match(/<Ntry>/g) ?? []).length;
+      transactions = parsedTransactions.length;
       if (transactions === 0) validationWarnings.push("No entries found in CAMT.053");
     } else {
       validationErrors.push("Unsupported format: expected MT940 or CAMT.053");
@@ -98,9 +108,7 @@ Deno.serve(async (req) => {
     const exportPath = `${basePath}/statement.${job.format}`;
 
     if (job.format === "csv") {
-      const csvContent =
-        "Date,Description,Amount\n" +
-        (transactions > 0 ? `2025-01-01,Converted,${transactions}\n` : "");
+      const csvContent = buildCsv(parsedTransactions);
       const { error: uploadErr } = await supabase.storage
         .from("exports")
         .upload(exportPath, new Blob([csvContent]), {
@@ -110,10 +118,7 @@ Deno.serve(async (req) => {
       if (uploadErr) validationErrors.push("Failed to write export file: csv");
     } else if (job.format === "xlsx") {
       const xlsxBytes = (() => {
-        const aoa: (string | number)[][] = [
-          ["Date", "Description", "Amount"],
-          ...(transactions > 0 ? [["2025-01-01", "Converted", transactions]] : []),
-        ];
+        const aoa = buildXlsxAoA(parsedTransactions);
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Statement");
@@ -128,80 +133,7 @@ Deno.serve(async (req) => {
         });
       if (uploadErr) validationErrors.push("Failed to write export file: xlsx");
     } else if (job.format === "qbo") {
-      const qboContent = (() => {
-        const now = new Date();
-        const fmt = (d: Date) => {
-          const pad = (n: number) => String(n).padStart(2, "0");
-          return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}${pad(
-            d.getUTCHours()
-          )}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
-        };
-
-        const dtServer = fmt(now) + ".000[-0:UTC]";
-        const dtPosted = fmt(now);
-        const acctId = "0000000000";
-        const bankId = "000000000";
-        const txnList = transactions > 0
-          ? `
-      <STMTTRN>
-        <TRNTYPE>OTHER
-        <DTPOSTED>${dtPosted}
-        <TRNAMT>${Number(transactions).toFixed(2)}
-        <FITID>${jobId}
-        <NAME>Converted transactions
-        <MEMO>${transactions} transaction(s)
-      </STMTTRN>`
-          : "";
-
-        return [
-          "OFXHEADER:100",
-          "DATA:OFXSGML",
-          "VERSION:102",
-          "SECURITY:NONE",
-          "ENCODING:UTF-8",
-          "CHARSET:NONE",
-          "COMPRESSION:NONE",
-          "OLDFILEUID:NONE",
-          "NEWFILEUID:NONE",
-          "",
-          "<OFX>",
-          "  <SIGNONMSGSRSV1>",
-          "    <SONRS>",
-          "      <STATUS>",
-          "        <CODE>0",
-          "        <SEVERITY>INFO",
-          "      </STATUS>",
-          `      <DTSERVER>${dtServer}`,
-          "      <LANGUAGE>ENG",
-          "    </SONRS>",
-          "  </SIGNONMSGSRSV1>",
-          "  <BANKMSGSRSV1>",
-          "    <STMTTRNRS>",
-          `      <TRNUID>${jobId}`,
-          "      <STATUS>",
-          "        <CODE>0",
-          "        <SEVERITY>INFO",
-          "      </STATUS>",
-          "      <STMTRS>",
-          "        <CURDEF>USD",
-          "        <BANKACCTFROM>",
-          `          <BANKID>${bankId}`,
-          `          <ACCTID>${acctId}`,
-          "          <ACCTTYPE>CHECKING",
-          "        </BANKACCTFROM>",
-          "        <BANKTRANLIST>",
-          `          <DTSTART>${dtPosted}`,
-          `          <DTEND>${dtPosted}`,
-          txnList,
-          "        </BANKTRANLIST>",
-          "      </STMTRS>",
-          "    </STMTTRNRS>",
-          "  </BANKMSGSRSV1>",
-          "</OFX>",
-          "",
-        ].join("\n");
-      })();
-
+      const qboContent = buildQbo(parsedTransactions, jobId);
       const { error: uploadErr } = await supabase.storage
         .from("exports")
         .upload(exportPath, new Blob([qboContent]), {

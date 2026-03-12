@@ -1,9 +1,12 @@
 "use client";
 
-import { User, Trash2 } from "lucide-react";
-import { useUser } from "@/lib/auth-context";
-import { useBalance } from "@/lib/queries/use-balance";
-import { useDeleteAccountMutation } from "@/lib/queries/use-auth";
+import {User, Trash2} from "lucide-react";
+import {useUser} from "@/lib/auth-context";
+import {useBalance} from "@/lib/queries/use-balance";
+import {
+  useDeleteAccountMutation,
+  useRequestEmailOtpMutation,
+} from "@/lib/queries/use-auth";
 import React from "react";
 import {
   Card,
@@ -18,12 +21,28 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/react";
+import {InputOtp} from "@heroui/input-otp";
+
+const CODE_LENGTH = 6;
 
 export default function SettingsPage() {
-  const { user, loading } = useUser();
-  const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useBalance();
+  const {user, loading} = useUser();
+  const {
+    data: balanceData,
+    isLoading: balanceLoading,
+    error: balanceError,
+  } = useBalance();
   const deleteAccount = useDeleteAccountMutation();
+  const requestOtp = useRequestEmailOtpMutation();
   const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [otpOpen, setOtpOpen] = React.useState(false);
+  const [otpCode, setOtpCode] = React.useState("");
+  const [otpError, setOtpError] = React.useState<string | null>(null);
+  const [otpSent, setOtpSent] = React.useState(false);
+  /** OTP to send to backend when user confirms delete (verified server-side). */
+  const [pendingDeleteOtp, setPendingDeleteOtp] = React.useState<string | null>(
+    null,
+  );
 
   if (loading || balanceLoading) {
     return (
@@ -50,9 +69,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-xl space-y-8">
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
-        <p className="mt-1 text-sm text-default-600">
-          Your account details.
-        </p>
+        <p className="mt-1 text-sm text-default-600">Your account details.</p>
       </div>
 
       <Card className="border border-default-200">
@@ -91,27 +108,172 @@ export default function SettingsPage() {
         </CardHeader>
         <CardBody className="flex flex-col gap-3 pt-0">
           <p className="text-xs text-default-600">
-            Deleting your account will permanently remove your profile, conversion
-            history, uploaded files, and remaining balance ({coins} coins). This
-            action cannot be undone.
+            Deleting your account will permanently remove your profile,
+            conversion history, uploaded files, and remaining balance ({coins}{" "}
+            coins). This action cannot be undone.
           </p>
           <Button
             color="danger"
             variant="flat"
             className="self-start"
             startContent={<Trash2 className="h-4 w-4" />}
-            onPress={() => setDeleteOpen(true)}
+            onPress={() => {
+              setOtpSent(false);
+              setOtpCode("");
+              setOtpError(null);
+              setOtpOpen(true);
+            }}
           >
             Delete account
           </Button>
         </CardBody>
       </Card>
 
+      {/* Step 1: Email OTP verification */}
+      <Modal
+        isOpen={otpOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteAccount.isPending) {
+            setOtpOpen(false);
+            setOtpSent(false);
+            setOtpCode("");
+            setOtpError(null);
+            requestOtp.reset();
+          }
+        }}
+        hideCloseButton
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            Verify your email
+          </ModalHeader>
+          <ModalBody className="gap-4">
+            <p className="text-sm text-default-600">
+              To continue with account deletion, we&apos;ll send a 6-digit code
+              to{" "}
+              <span className="font-medium text-foreground">{user?.email}</span>
+              . Enter it below.
+            </p>
+            {!otpSent ? (
+              <div className="flex justify-end gap-2 pb-2">
+                <Button
+                  variant="flat"
+                  onPress={() => {
+                    setOtpOpen(false);
+                    setOtpError(null);
+                    requestOtp.reset();
+                  }}
+                  isDisabled={requestOtp.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={() => {
+                    if (!user?.email) return;
+                    setOtpError(null);
+                    requestOtp.mutate(user.email, {
+                      onSuccess: () => setOtpSent(true),
+                      onError: (err) =>
+                        setOtpError(err.message ?? "Failed to send code"),
+                    });
+                  }}
+                  isLoading={requestOtp.isPending}
+                  isDisabled={requestOtp.isPending}
+                >
+                  Send code
+                </Button>
+              </div>
+            ) : (
+              <form
+                className="flex flex-col gap-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (otpCode.length !== CODE_LENGTH) return;
+                  setOtpError(null);
+                  setPendingDeleteOtp(otpCode);
+                  setOtpOpen(false);
+                  setOtpSent(false);
+                  setOtpCode("");
+                  setDeleteOpen(true);
+                }}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <label className="text-xs font-medium text-default-700">
+                    Verification code
+                  </label>
+                  <InputOtp
+                    length={CODE_LENGTH}
+                    value={otpCode}
+                    onValueChange={(value) => {
+                      setOtpCode(value);
+                      setOtpError(null);
+                    }}
+                    autoFocus
+                    autoComplete="one-time-code"
+                    isInvalid={!!otpError}
+                  />
+                  {otpError && (
+                    <p className="text-xs text-danger" role="alert">
+                      {otpError}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="flat"
+                    onPress={() => {
+                      setOtpOpen(false);
+                      setOtpSent(false);
+                      setOtpCode("");
+                      setOtpError(null);
+                      setPendingDeleteOtp(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="bordered"
+                      onPress={() => {
+                        if (!user?.email) return;
+                        setOtpError(null);
+                        setOtpCode("");
+                        requestOtp.mutate(user.email, {
+                          onSuccess: () => {},
+                          onError: (err) =>
+                            setOtpError(err.message ?? "Failed to resend code"),
+                        });
+                      }}
+                      isLoading={requestOtp.isPending}
+                      isDisabled={requestOtp.isPending}
+                    >
+                      Resend code
+                    </Button>
+                    <Button
+                      type="submit"
+                      color="primary"
+                      isDisabled={otpCode.length !== CODE_LENGTH}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Step 2: Confirm account deletion */}
       <Modal
         isOpen={deleteOpen}
         onOpenChange={(open) => {
-          if (!open && !deleteAccount.isLoading) {
+          if (!open && !deleteAccount.isPending) {
             setDeleteOpen(false);
+            setPendingDeleteOtp(null);
             deleteAccount.reset();
           }
         }}
@@ -123,14 +285,14 @@ export default function SettingsPage() {
           </ModalHeader>
           <ModalBody>
             <p className="text-sm text-default-600">
-              This will permanently delete your StatementFlow account, including your
-              profile, all conversion jobs and exports, and your remaining balance of{" "}
-              <span className="font-semibold">{coins} coins</span>. This action cannot be
-              undone.
+              This will permanently delete your StatementFlow account, including
+              your profile, all conversion jobs and exports, and your remaining
+              balance of <span className="font-semibold">{coins} coins</span>.
+              This action cannot be undone.
             </p>
             <p className="text-xs text-default-500">
-              If you&apos;re sure, click &quot;Delete account&quot; below. You will be
-              signed out and your data will be removed from our systems.
+              If you&apos;re sure, click &quot;Delete account&quot; below. You
+              will be signed out and your data will be removed from our systems.
             </p>
           </ModalBody>
           <ModalFooter>
@@ -138,16 +300,33 @@ export default function SettingsPage() {
               variant="flat"
               onPress={() => {
                 setDeleteOpen(false);
+                setPendingDeleteOtp(null);
                 deleteAccount.reset();
               }}
-              isDisabled={deleteAccount.isLoading}
+              isDisabled={deleteAccount.isPending}
             >
               Cancel
             </Button>
             <Button
               color="danger"
-              onPress={() => deleteAccount.mutate()}
-              isLoading={deleteAccount.isLoading}
+              onPress={() => {
+                if (pendingDeleteOtp) {
+                  deleteAccount.mutate(pendingDeleteOtp, {
+                    onError: () => {
+                      setPendingDeleteOtp(null);
+                      setDeleteOpen(false);
+                      setOtpSent(true);
+                      setOtpCode("");
+                      setOtpOpen(true);
+                      setOtpError(
+                        "Invalid or expired code. Request a new code and try again.",
+                      );
+                    },
+                  });
+                }
+              }}
+              isLoading={deleteAccount.isPending}
+              isDisabled={deleteAccount.isPending || !pendingDeleteOtp}
             >
               Delete account
             </Button>

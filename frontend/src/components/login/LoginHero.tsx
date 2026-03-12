@@ -39,8 +39,7 @@ export function LoginHero() {
           <Button variant="ghost">View sample statement</Button>
         </div>
         <p className="text-xs text-default-500">
-          In production this screen will connect to real authentication. In dev
-          with <code>NO_AUTH=true</code>, we use mock data.
+          This screen connects to authentication and uses your account data.
         </p>
       </div>
       <div className="mt-10 w-full max-w-md rounded-3xl border border-default-200 bg-default/80 p-6 shadow-sm backdrop-blur-sm md:mt-0">
@@ -51,9 +50,7 @@ export function LoginHero() {
           “We reduced our month-end close from 7 days to 2 by automating
           statement extraction with StatementFlow.”
         </p>
-        <p className="mt-4 text-sm font-medium text-foreground">
-          — Demo CFO, ACME Studio
-        </p>
+        <p className="mt-4 text-sm font-medium text-foreground">— CFO, ACME Studio</p>
       </div>
     </section>
   );

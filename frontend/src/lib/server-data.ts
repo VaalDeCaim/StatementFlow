@@ -1,32 +1,34 @@
-import { cookies } from "next/headers";
-import { isAuthDisabled, DEV_USER_COOKIE } from "./auth-config";
-import {
-  mockUser,
-  mockDashboardData,
-  type DashboardData,
-} from "./mock-data";
-import { createClient } from "./supabase/server";
+import {cookies} from "next/headers";
+import {isAuthDisabled, allowDevMode, DEV_USER_COOKIE} from "./auth-config";
+import {mockUser, mockDashboardData, type DashboardData} from "./mock-data";
+import {logAuthBypass, logServerDataFailure} from "./security-logger";
+import {createClient} from "./supabase/server";
 
 export type CurrentUser = typeof mockUser | null;
 
 export async function getCurrentUser(): Promise<CurrentUser> {
   if (isAuthDisabled()) {
+    logAuthBypass("NO_AUTH");
     return mockUser;
   }
 
   const store = await cookies();
-  if (store.get(DEV_USER_COOKIE)?.value === "1") {
+  if (allowDevMode() && store.get(DEV_USER_COOKIE)?.value === "1") {
+    logAuthBypass("DEV_USER_COOKIE");
     return mockUser;
   }
 
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
     try {
       const supabase = await createClient();
       const {
-        data: { user },
+        data: {user},
       } = await supabase.auth.getUser();
       if (!user) return null;
-      const { data: profile } = await supabase
+      const {data: profile} = await supabase
         .from("profiles")
         .select("id, name, email")
         .eq("id", user.id)
@@ -34,16 +36,22 @@ export async function getCurrentUser(): Promise<CurrentUser> {
       if (profile) {
         return {
           id: profile.id,
-          name: profile.name ?? user.user_metadata?.full_name ?? user.email ?? "",
+          name:
+            profile.name ?? user.user_metadata?.full_name ?? user.email ?? "",
           email: profile.email ?? user.email ?? "",
         };
       }
       return {
         id: user.id,
-        name: (user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split("@")[0]) ?? "",
+        name:
+          user.user_metadata?.full_name ??
+          user.user_metadata?.name ??
+          user.email?.split("@")[0] ??
+          "",
         email: user.email ?? "",
       };
-    } catch {
+    } catch (err) {
+      logServerDataFailure("getCurrentUser", err);
       return null;
     }
   }
@@ -53,15 +61,20 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 
 export async function getDashboardData(): Promise<DashboardData | null> {
   if (isAuthDisabled()) {
+    logAuthBypass("NO_AUTH");
     return mockDashboardData;
   }
 
   const store = await cookies();
-  if (store.get(DEV_USER_COOKIE)?.value === "1") {
+  if (allowDevMode() && store.get(DEV_USER_COOKIE)?.value === "1") {
+    logAuthBypass("DEV_USER_COOKIE");
     return mockDashboardData;
   }
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
     return null;
   }
 
@@ -69,7 +82,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     const supabase = await createClient();
 
     const {
-      data: { user },
+      data: {user},
       error: userError,
     } = await supabase.auth.getUser();
 
@@ -77,7 +90,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       return null;
     }
 
-    const { data: profile } = await supabase
+    const {data: profile} = await supabase
       .from("profiles")
       .select("name, email, balance")
       .eq("id", user.id)
@@ -92,18 +105,17 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
     const displayEmail = profile?.email ?? user.email ?? "";
 
-    const [{ count: conversionsCount }, { data: jobs, error: jobsError }] = await Promise.all([
-      supabase
-        .from("jobs")
-        .select("id", { count: "exact", head: true }),
-      supabase
-        .from("jobs")
-        .select(
-          "id, status, format, file_name, created_at, completed_at, account_count, transaction_count",
-        )
-        .order("created_at", { ascending: false })
-        .limit(20),
-    ]);
+    const [{count: conversionsCount}, {data: jobs, error: jobsError}] =
+      await Promise.all([
+        supabase.from("jobs").select("id", {count: "exact", head: true}),
+        supabase
+          .from("jobs")
+          .select(
+            "id, status, format, file_name, created_at, completed_at, account_count, transaction_count",
+          )
+          .order("created_at", {ascending: false})
+          .limit(20),
+      ]);
 
     if (jobsError) {
       return null;
@@ -126,7 +138,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
         const subtitleParts = [
           job.format?.toUpperCase?.() ?? "",
-          typeof job.account_count === "number" ? `${job.account_count} accounts` : null,
+          typeof job.account_count === "number"
+            ? `${job.account_count} accounts`
+            : null,
           typeof job.transaction_count === "number"
             ? `${job.transaction_count} transactions`
             : null,
@@ -159,8 +173,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       metrics,
       recent,
     };
-  } catch {
+  } catch (err) {
+    logServerDataFailure("getDashboardData", err);
     return null;
   }
 }
-

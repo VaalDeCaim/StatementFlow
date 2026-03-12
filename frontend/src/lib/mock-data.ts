@@ -26,7 +26,7 @@ export type DashboardData = {
 
 export const mockUser: MockUser = {
   id: "user_mock_1",
-  name: "Demo Founder",
+  name: "Founder",
   email: "founder@example.com",
 };
 

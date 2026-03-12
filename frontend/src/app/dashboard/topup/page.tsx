@@ -11,7 +11,11 @@ import {
   Building2,
   CircleStar,
 } from "lucide-react";
-import { useBalance, useTopupBundles, useTopUpMutation } from "@/lib/queries";
+import {
+  useBalance,
+  useTopupBundles,
+  useCreateStripeCheckoutMutation,
+} from "@/lib/queries";
 import { Button, Card, CardBody, Spinner, Alert, addToast } from "@heroui/react";
 
 const BUNDLE_ADVANTAGES: Record<
@@ -44,7 +48,7 @@ const BUNDLE_ADVANTAGES: Record<
 export default function TopUpPage() {
   const { data: balanceData } = useBalance();
   const { data: bundles, isLoading, error } = useTopupBundles();
-  const topUp = useTopUpMutation();
+  const createCheckout = useCreateStripeCheckoutMutation();
 
   if (isLoading) {
     return (
@@ -151,20 +155,17 @@ export default function TopUpPage() {
                   className="mt-4 w-full"
                   color="primary"
                   variant="solid"
-                  isLoading={topUp.isLoading && topUp.variables === pkg.id}
-                  isDisabled={topUp.isLoading}
+                  isLoading={
+                    createCheckout.isPending && createCheckout.variables === pkg.id
+                  }
+                  isDisabled={createCheckout.isPending}
                   onPress={async () => {
                     try {
-                      const result = await topUp.mutateAsync(pkg.id);
-                      addToast({
-                        title: `Added ${pkg.coins} coins`,
-                        description: `New balance: ${result.balance} coins`,
-                        color: "success",
-                        timeout: 3000,
-                      });
+                      await createCheckout.mutateAsync(pkg.id);
+                      // Redirect happens in mutation onSuccess
                     } catch (e) {
                       addToast({
-                        title: "Top up failed",
+                        title: "Checkout failed",
                         description:
                           e instanceof Error ? e.message : "Please try again.",
                         color: "danger",

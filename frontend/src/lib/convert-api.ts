@@ -32,8 +32,12 @@ function mapRowToJob(row: JobRow): Job {
       ? {
           accounts: row.account_count ?? 0,
           transactions: row.transaction_count ?? 0,
-          warnings: Array.isArray(row.validation_warnings) ? row.validation_warnings : [],
-          errors: Array.isArray(row.validation_errors) ? row.validation_errors : [],
+          warnings: Array.isArray(row.validation_warnings)
+            ? row.validation_warnings
+            : [],
+          errors: Array.isArray(row.validation_errors)
+            ? row.validation_errors
+            : [],
         }
       : undefined;
 
@@ -49,13 +53,20 @@ function mapRowToJob(row: JobRow): Job {
 }
 
 async function getSessionToken(): Promise<string> {
-  const { getSupabaseClient } = await import("./supabase/client");
+  const {getSupabaseClient} = await import("./supabase/client");
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase not configured");
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError || !session?.access_token) throw new Error("Not authenticated");
+  const {
+    data: {session},
+    error: sessionError,
+  } = await supabase.auth.getSession();
+  if (sessionError || !session?.access_token)
+    throw new Error("Not authenticated");
   // Refresh session so the access_token is not expired (avoids "Invalid JWT" at Edge Functions)
-  const { data: { session: refreshed }, error: refreshError } = await supabase.auth.refreshSession();
+  const {
+    data: {session: refreshed},
+    error: refreshError,
+  } = await supabase.auth.refreshSession();
   const token = refreshed?.access_token ?? session.access_token;
   if (refreshError && !token) throw new Error("Not authenticated");
   return token;
@@ -81,13 +92,13 @@ async function getEdgeFunctionHeaders(): Promise<Record<string, string>> {
 
 export async function realUploadInit(
   filename: string,
-  contentType: string
+  contentType: string,
 ): Promise<UploadInitResponse> {
   const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/uploads-init`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ filename, contentType }),
+    body: JSON.stringify({filename, contentType}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -99,26 +110,26 @@ export async function realUploadInit(
 export async function realUploadToStorage(
   key: string,
   token: string,
-  file: File
+  file: File,
 ): Promise<void> {
-  const { getSupabaseClient } = await import("./supabase/client");
+  const {getSupabaseClient} = await import("./supabase/client");
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase not configured");
-  const { error } = await supabase.storage
+  const {error} = await supabase.storage
     .from("raw")
-    .uploadToSignedUrl(key, token, file, { contentType: file.type });
+    .uploadToSignedUrl(key, token, file, {contentType: file.type});
   if (error) throw new Error(error.message);
 }
 
 export async function realCreateJob(
   key: string,
-  format: ExportFormat
+  format: ExportFormat,
 ): Promise<CreateJobResponse> {
   const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/jobs-create`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ key, format }),
+    body: JSON.stringify({key, format}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -131,7 +142,7 @@ export async function realFetchJobsPage(params?: {
   cursor?: string | null;
   limit?: number;
 }): Promise<JobsPage> {
-  const { getSupabaseClient } = await import("./supabase/client");
+  const {getSupabaseClient} = await import("./supabase/client");
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase not configured");
 
@@ -140,16 +151,16 @@ export async function realFetchJobsPage(params?: {
   let query = supabase
     .from("jobs")
     .select(
-      "id, status, format, file_name, created_at, completed_at, validation_errors, validation_warnings, account_count, transaction_count"
+      "id, status, format, file_name, created_at, completed_at, validation_errors, validation_warnings, account_count, transaction_count",
     )
-    .order("created_at", { ascending: false })
+    .order("created_at", {ascending: false})
     .limit(limit + 1);
 
   if (params?.cursor) {
     query = query.lt("created_at", params.cursor);
   }
 
-  const { data, error } = await query;
+  const {data, error} = await query;
   if (error) throw new Error(error.message);
 
   const rows = (data ?? []) as JobRow[];
@@ -159,7 +170,7 @@ export async function realFetchJobsPage(params?: {
   const nextCursor =
     hasMore && items.length > 0 ? items[items.length - 1]!.createdAt : null;
 
-  return { items, nextCursor };
+  return {items, nextCursor};
 }
 
 type TopupBundle = {
@@ -179,31 +190,56 @@ export async function realFetchTopupBundles(): Promise<TopupBundle[]> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error ?? res.statusText);
   }
-  const json = (await res.json()) as { bundles?: TopupBundle[] };
+  const json = (await res.json()) as {bundles?: TopupBundle[]};
   return json.bundles ?? [];
 }
 
-export async function realTopUp(bundleId: string): Promise<{ balance: number }> {
+export async function realTopUp(bundleId: string): Promise<{balance: number}> {
   const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/topup-bundles`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ bundleId }),
+    body: JSON.stringify({bundleId}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error ?? res.statusText);
   }
-  return (await res.json()) as { balance: number };
+  return (await res.json()) as {balance: number};
+}
+
+/** Creates a Stripe Checkout session for a coin bundle and returns the redirect URL. */
+export async function realCreateStripeCheckout(
+  bundleId: string,
+): Promise<{url: string}> {
+  const successBaseUrl =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const headers = await getEdgeFunctionHeaders();
+  const res = await fetch(`${getFunctionsUrl()}/stripe-create-checkout`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({bundleId, successBaseUrl}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err?.error ?? res.statusText ?? "Failed to create checkout",
+    );
+  }
+  const data = (await res.json()) as {url?: string};
+  if (!data?.url) throw new Error("No checkout URL returned");
+  return {url: data.url};
 }
 
 export async function realGetJobStatus(jobId: string): Promise<Job | null> {
-  const { getSupabaseClient } = await import("./supabase/client");
+  const {getSupabaseClient} = await import("./supabase/client");
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase not configured");
-  const { data, error } = await supabase
+  const {data, error} = await supabase
     .from("jobs")
-    .select("id, status, format, file_name, created_at, completed_at, validation_errors, validation_warnings, account_count, transaction_count")
+    .select(
+      "id, status, format, file_name, created_at, completed_at, validation_errors, validation_warnings, account_count, transaction_count",
+    )
     .eq("id", jobId)
     .single();
   if (error || !data) return null;
@@ -213,19 +249,19 @@ export async function realGetJobStatus(jobId: string): Promise<Job | null> {
 /** Returns a signed download URL; open in new tab or use <a download> to avoid CORS. */
 export async function realDownloadExport(
   jobId: string,
-  format: string
+  format: string,
 ): Promise<string> {
   const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/exports-download`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ jobId, format }),
+    body: JSON.stringify({jobId, format}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error ?? res.statusText);
   }
-  const { url } = await res.json();
+  const {url} = await res.json();
   if (!url) throw new Error("No download URL");
   return url;
 }
@@ -233,13 +269,13 @@ export async function realDownloadExport(
 /** Fetches export file content for in-app preview. Returns text for csv/qbo, ArrayBuffer for xlsx. */
 export async function realPreviewExport(
   jobId: string,
-  format: string
+  format: string,
 ): Promise<string | ArrayBuffer> {
   const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/exports-preview`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ jobId, format }),
+    body: JSON.stringify({jobId, format}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -252,13 +288,13 @@ export async function realPreviewExport(
   return res.text();
 }
 
-/** Calls delete-user Edge Function with a refreshed JWT (avoids "Invalid JWT" from stale tokens). */
-export async function realDeleteAccount(): Promise<void> {
+/** Calls delete-user Edge Function with a refreshed JWT and OTP. Backend verifies OTP before deleting. */
+export async function realDeleteAccount(otp: string): Promise<void> {
   const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/delete-user`, {
     method: "POST",
     headers,
-    body: JSON.stringify({}),
+    body: JSON.stringify({otp: otp.trim()}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -1,11 +1,13 @@
 "use client";
 
 import {useState} from "react";
+import Link from "next/link";
 import {useRouter} from "next/navigation";
 import {useForm, Controller} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {Button, Card, CardBody, Input, Checkbox} from "@heroui/react";
-import {setDevUserCookie} from "@/lib/auth-config";
+import {Eye, EyeOff} from "lucide-react";
+import {setDevUserCookie, allowDevMode} from "@/lib/auth-config";
 import {getSupabaseClient} from "@/lib/supabase/client";
 import {useSignUpMutation} from "@/lib/queries/use-auth";
 import {signupSchema, type SignupInput} from "@/lib/validations/auth";
@@ -19,6 +21,7 @@ export function SignupForm() {
   const {mutateAsync, isPending, error} = useSignUpMutation();
 
   const [isSubmitting, setSubmitting] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const {
     control,
     handleSubmit,
@@ -104,7 +107,7 @@ export function SignupForm() {
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
                 name="password"
-                type="password"
+                type={isPasswordVisible ? "text" : "password"}
                 label="Password"
                 autoComplete="new-password"
                 placeholder="••••••••"
@@ -112,6 +115,23 @@ export function SignupForm() {
                 classNames={{label: labelClass}}
                 isInvalid={!!errors.password}
                 errorMessage={errors.password?.message}
+                endContent={
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="focus:outline-none"
+                    onClick={() => setIsPasswordVisible((v) => !v)}
+                    aria-label={
+                      isPasswordVisible ? "Hide password" : "Show password"
+                    }
+                  >
+                    {isPasswordVisible ? (
+                      <EyeOff className="size-4 text-default-400" aria-hidden />
+                    ) : (
+                      <Eye className="size-4 text-default-400" aria-hidden />
+                    )}
+                  </button>
+                }
               />
             )}
           />
@@ -124,7 +144,7 @@ export function SignupForm() {
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
                 name="confirmPassword"
-                type="password"
+                type={isPasswordVisible ? "text" : "password"}
                 label="Confirm password"
                 autoComplete="new-password"
                 placeholder="••••••••"
@@ -132,6 +152,23 @@ export function SignupForm() {
                 classNames={{label: labelClass}}
                 isInvalid={!!errors.confirmPassword}
                 errorMessage={errors.confirmPassword?.message}
+                endContent={
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="focus:outline-none"
+                    onClick={() => setIsPasswordVisible((v) => !v)}
+                    aria-label={
+                      isPasswordVisible ? "Hide password" : "Show password"
+                    }
+                  >
+                    {isPasswordVisible ? (
+                      <EyeOff className="size-4 text-default-400" aria-hidden />
+                    ) : (
+                      <Eye className="size-4 text-default-400" aria-hidden />
+                    )}
+                  </button>
+                }
               />
             )}
           />
@@ -150,9 +187,19 @@ export function SignupForm() {
                   }}
                   isInvalid={!!errors.terms}
                 >
-                  I agree to the terms and understand this is a demo
-                  environment.
+                  I agree to the Terms &amp; Conditions and understand this is a
+                  demo environment.
                 </Checkbox>
+                <p className="text-[11px] text-default-500">
+                  You can read our{" "}
+                  <Link
+                    href="/terms"
+                    className="underline underline-offset-2 hover:text-primary"
+                  >
+                    Terms &amp; Conditions
+                  </Link>
+                  .
+                </p>
                 {errors.terms?.message ? (
                   <p className="text-xs text-danger">{errors.terms.message}</p>
                 ) : null}
@@ -171,7 +218,7 @@ export function SignupForm() {
                 ? "Creating account…"
                 : "Create account"}
             </Button>
-            {supabase ? null : (
+            {supabase || !allowDevMode() ? null : (
               <Button
                 type="button"
                 variant="bordered"

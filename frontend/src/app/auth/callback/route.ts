@@ -1,10 +1,26 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import {createServerClient} from "@supabase/ssr";
+import {NextResponse, type NextRequest} from "next/server";
+
+const ALLOWED_REDIRECT_PATHS = [
+  "/onboarding",
+  "/reset-password",
+  "/dashboard",
+];
+
+function isAllowedRedirectPath(next: string): boolean {
+  if (!next.startsWith("/") || next.includes("//")) return false;
+  return (
+    ALLOWED_REDIRECT_PATHS.includes(next) ||
+    next.startsWith("/onboarding/") ||
+    next.startsWith("/dashboard/")
+  );
+}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/onboarding";
+  const rawNext = requestUrl.searchParams.get("next") ?? "/onboarding";
+  const next = isAllowedRedirectPath(rawNext) ? rawNext : "/onboarding";
 
   if (
     !code ||
@@ -25,18 +41,21 @@ export async function GET(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+          cookiesToSet.forEach(({name, value, options}) =>
+            response.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const {error} = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, requestUrl.origin)
+      new URL(
+        `/login?error=${encodeURIComponent(error.message)}`,
+        requestUrl.origin,
+      ),
     );
   }
 

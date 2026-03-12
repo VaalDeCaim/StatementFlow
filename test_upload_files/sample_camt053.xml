@@ -11,6 +11,10 @@
     <Stmt>
       <Id>STMT001</Id>
       <CreDtTm>2025-03-12T10:00:00Z</CreDtTm>
+      <FrToDt>
+        <FrDtTm>2025-01-01T00:00:00Z</FrDtTm>
+        <ToDtTm>2025-01-31T23:59:59Z</ToDtTm>
+      </FrToDt>
       <Acct>
         <Id>
           <IBAN>NL12ABNA0123456789</IBAN>
@@ -40,14 +44,31 @@
         <ValDt>
           <Dt>2025-01-02</Dt>
         </ValDt>
+        <AcctSvcrRef>BNK-2025-001-001</AcctSvcrRef>
         <NtryDtls>
           <TxDtls>
             <Refs>
+              <AcctSvcrRef>BNK-2025-001-001</AcctSvcrRef>
               <EndToEndId>INV-2025-001</EndToEndId>
+              <InstrId>INST-001</InstrId>
+              <TxId>TX-2025-001</TxId>
             </Refs>
             <RmtInf>
               <Ustrd>Supplier payment</Ustrd>
+              <Strd>
+                <CdtrRefInf>
+                  <Ref>INV-2025-001</Ref>
+                </CdtrRefInf>
+              </Strd>
             </RmtInf>
+            <RltdPties>
+              <Dbtr>
+                <Pty>
+                  <Nm>ACME Supplier BV</Nm>
+                </Pty>
+              </Dbtr>
+            </RltdPties>
+            <AddtlTxInf>Supplier payment - Invoice 2025-001</AddtlTxInf>
           </TxDtls>
         </NtryDtls>
       </Ntry>
@@ -64,9 +85,389 @@
         </ValDt>
         <NtryDtls>
           <TxDtls>
+            <Refs>
+              <EndToEndId>REF-2025-002</EndToEndId>
+            </Refs>
             <RmtInf>
               <Ustrd>Customer refund</Ustrd>
             </RmtInf>
+            <RltdPties>
+              <Cdtr>
+                <Pty>
+                  <Nm>Customer ABC</Nm>
+                </Pty>
+              </Cdtr>
+            </RltdPties>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY003</NtryRef>
+        <Amt Ccy="EUR">1250.50</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt>
+          <Dt>2025-01-05</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2025-01-05</Dt>
+        </ValDt>
+        <AcctSvcrRef>BNK-2025-001-003</AcctSvcrRef>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <AcctSvcrRef>BNK-2025-001-003</AcctSvcrRef>
+              <TxId>TX-2025-003</TxId>
+            </Refs>
+            <RmtInf>
+              <Ustrd>Fee payment Q1 2025</Ustrd>
+            </RmtInf>
+            <RltdPties>
+              <Dbtr>
+                <Pty>
+                  <Nm>ACME Corp</Nm>
+                </Pty>
+              </Dbtr>
+            </RltdPties>
+            <AddtlTxInf>Miscellaneous fee - Q1 2025</AddtlTxInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY004</NtryRef>
+        <Amt Ccy="EUR">3200.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt>
+          <Dt>2025-01-08</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2025-01-08</Dt>
+        </ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>ORD-2025-044</EndToEndId>
+              <ClrSysRef>CLR-2025-044</ClrSysRef>
+            </Refs>
+            <RmtInf>
+              <Ustrd>Customer payment</Ustrd>
+              <Strd>
+                <CdtrRefInf>
+                  <Ref>ORD-2025-044</Ref>
+                </CdtrRefInf>
+              </Strd>
+            </RmtInf>
+            <RltdPties>
+              <Dbtr>
+                <Pty>
+                  <Nm>Customer XYZ Ltd</Nm>
+                </Pty>
+              </Dbtr>
+            </RltdPties>
+            <AddtlTxInf>Payment for order 2025-044. Charges EUR 5,00.</AddtlTxInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY005</NtryRef>
+        <Amt Ccy="EUR">100.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-09</Dt></BookgDt>
+        <ValDt><Dt>2025-01-09</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Office supplies</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY006</NtryRef>
+        <Amt Ccy="EUR">250.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-10</Dt></BookgDt>
+        <ValDt><Dt>2025-01-10</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Rent Jan 2025</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY007</NtryRef>
+        <Amt Ccy="EUR">500.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-11</Dt></BookgDt>
+        <ValDt><Dt>2025-01-11</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Payment received - Project Alpha</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY008</NtryRef>
+        <Amt Ccy="EUR">75.50</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-12</Dt></BookgDt>
+        <ValDt><Dt>2025-01-12</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Bank fee</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY009</NtryRef>
+        <Amt Ccy="EUR">1200.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-13</Dt></BookgDt>
+        <ValDt><Dt>2025-01-13</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>INV-2025-012</EndToEndId></Refs>
+            <RmtInf><Ustrd>Invoice 2025-012</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY010</NtryRef>
+        <Amt Ccy="EUR">300.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-14</Dt></BookgDt>
+        <ValDt><Dt>2025-01-14</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Software subscription</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY011</NtryRef>
+        <Amt Ccy="EUR">80.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-15</Dt></BookgDt>
+        <ValDt><Dt>2025-01-15</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Refund - overpayment</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY012</NtryRef>
+        <Amt Ccy="EUR">450.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-16</Dt></BookgDt>
+        <ValDt><Dt>2025-01-16</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RltdPties><Dbtr><Pty><Nm>Utilities Co</Nm></Pty></Dbtr></RltdPties>
+            <RmtInf><Ustrd>Electricity Dec</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY013</NtryRef>
+        <Amt Ccy="EUR">200.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-17</Dt></BookgDt>
+        <ValDt><Dt>2025-01-17</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Consulting income</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY014</NtryRef>
+        <Amt Ccy="EUR">100.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-18</Dt></BookgDt>
+        <ValDt><Dt>2025-01-18</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Insurance premium</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY015</NtryRef>
+        <Amt Ccy="EUR">350.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-19</Dt></BookgDt>
+        <ValDt><Dt>2025-01-19</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Customer prepayment</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY016</NtryRef>
+        <Amt Ccy="EUR">90.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-20</Dt></BookgDt>
+        <ValDt><Dt>2025-01-20</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Postage and shipping</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY017</NtryRef>
+        <Amt Ccy="EUR">600.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-21</Dt></BookgDt>
+        <ValDt><Dt>2025-01-21</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>ORD-2025-021</EndToEndId></Refs>
+            <RmtInf><Ustrd>Order 2025-021</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY018</NtryRef>
+        <Amt Ccy="EUR">110.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-22</Dt></BookgDt>
+        <ValDt><Dt>2025-01-22</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Telecom services</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY019</NtryRef>
+        <Amt Ccy="EUR">40.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-23</Dt></BookgDt>
+        <ValDt><Dt>2025-01-23</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Interest credit</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY020</NtryRef>
+        <Amt Ccy="EUR">220.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-24</Dt></BookgDt>
+        <ValDt><Dt>2025-01-24</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Equipment purchase</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY021</NtryRef>
+        <Amt Ccy="EUR">180.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-25</Dt></BookgDt>
+        <ValDt><Dt>2025-01-25</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Commission received</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY022</NtryRef>
+        <Amt Ccy="EUR">70.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-26</Dt></BookgDt>
+        <ValDt><Dt>2025-01-26</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Legal fees</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY023</NtryRef>
+        <Amt Ccy="EUR">95.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-27</Dt></BookgDt>
+        <ValDt><Dt>2025-01-27</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Misc income</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY024</NtryRef>
+        <Amt Ccy="EUR">330.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-28</Dt></BookgDt>
+        <ValDt><Dt>2025-01-28</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Marketing services Jan</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY025</NtryRef>
+        <Amt Ccy="EUR">410.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-29</Dt></BookgDt>
+        <ValDt><Dt>2025-01-29</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Payment - Contract C-88</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY026</NtryRef>
+        <Amt Ccy="EUR">50.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-30</Dt></BookgDt>
+        <ValDt><Dt>2025-01-30</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Admin fee</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY027</NtryRef>
+        <Amt Ccy="EUR">160.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt><Dt>2025-01-31</Dt></BookgDt>
+        <ValDt><Dt>2025-01-31</Dt></ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Ustrd>Final payment INV-2025-030</Ustrd></RmtInf>
           </TxDtls>
         </NtryDtls>
       </Ntry>
@@ -77,7 +478,19 @@
           </CdOrPrtry>
         </Tp>
         <CdtDbtInd>CRDT</CdtDbtInd>
-        <Amt Ccy="EUR">984.56</Amt>
+        <Amt Ccy="EUR">4603.56</Amt>
+        <Dt>
+          <Dt>2025-01-31</Dt>
+        </Dt>
+      </Bal>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>CLAV</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Amt Ccy="EUR">4603.56</Amt>
         <Dt>
           <Dt>2025-01-31</Dt>
         </Dt>

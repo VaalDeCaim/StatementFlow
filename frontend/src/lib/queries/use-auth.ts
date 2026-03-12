@@ -251,14 +251,52 @@ export function useUpdatePasswordMutation() {
   });
 }
 
+/** Sends a 6-digit OTP to the user's email for re-auth (e.g. before delete account). */
+export function useRequestEmailOtpMutation() {
+  const supabase = getSupabaseClient();
+
+  return useMutation({
+    mutationFn: async (email: string) => {
+      if (!supabase) throw new Error("Auth not configured");
+      const {error} = await supabase.auth.signInWithOtp({
+        email,
+        options: {shouldCreateUser: false},
+      });
+      if (error) throw new Error(error.message ?? "Failed to send code");
+    },
+  });
+}
+
+/** Verifies the email OTP (type 'email'). Use after requestEmailOtp. Does not redirect. */
+export function useVerifyEmailOtpMutation() {
+  const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
+
+  return useMutation({
+    mutationFn: async ({email, token}: {email: string; token: string}) => {
+      if (!supabase) throw new Error("Auth not configured");
+      const {error} = await supabase.auth.verifyOtp({
+        email,
+        token: token.trim(),
+        type: "email",
+      });
+      if (error) throw new Error(error.message ?? "Invalid or expired code");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: queryKeys.user});
+      queryClient.refetchQueries({queryKey: queryKeys.user});
+    },
+  });
+}
+
 export function useDeleteAccountMutation() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (otp: string) => {
       const {realDeleteAccount} = await import("@/lib/convert-api");
-      await realDeleteAccount();
+      await realDeleteAccount(otp);
     },
     onSuccess: () => {
       queryClient.setQueryData(queryKeys.user, null);

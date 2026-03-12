@@ -1,16 +1,34 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import {createServerClient} from "@supabase/ssr";
+import {NextResponse, type NextRequest} from "next/server";
+import {isAuthDisabled} from "@/lib/auth-config";
+import {checkRateLimit, getClientIp} from "@/lib/rate-limit";
 
 export async function middleware(request: NextRequest) {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  const pathname = request.nextUrl.pathname;
+
+  if (pathname.startsWith("/api/")) {
+    const ip = getClientIp(request);
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        {error: {code: "RATE_LIMITED", message: "Too many requests"}},
+        {status: 429},
+      );
+    }
     return NextResponse.next();
   }
-  if (process.env.NO_AUTH === "true") {
+
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return NextResponse.next();
+  }
+  if (isAuthDisabled()) {
     return NextResponse.next();
   }
 
   try {
-    let response = NextResponse.next({ request });
+    let response = NextResponse.next({request});
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -21,17 +39,16 @@ export async function middleware(request: NextRequest) {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
+            cookiesToSet.forEach(({name, value, options}) =>
+              response.cookies.set(name, value, options),
             );
           },
         },
-      }
+      },
     );
 
     await supabase.auth.getSession();
 
-    const pathname = request.nextUrl.pathname;
     const protectedPaths =
       pathname === "/dashboard" ||
       pathname.startsWith("/dashboard/") ||
@@ -40,7 +57,7 @@ export async function middleware(request: NextRequest) {
       pathname === "/reset-password";
     if (protectedPaths) {
       const {
-        data: { session },
+        data: {session},
       } = await supabase.auth.getSession();
       if (!session) {
         const loginUrl = new URL("/login", request.url);
@@ -50,12 +67,13 @@ export async function middleware(request: NextRequest) {
 
     return response;
   } catch {
-    return NextResponse.next({ request });
+    return NextResponse.next({request});
   }
 }
 
 export const config = {
   matcher: [
+    "/api/:path*",
     "/dashboard",
     "/dashboard/:path*",
     "/onboarding",

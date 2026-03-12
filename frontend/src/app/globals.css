@@ -65,6 +65,15 @@ body {
     sans-serif;
 }
 
+/* Avoid janky per-element animations when toggling dark mode.
+   When the theme class changes, we want colors to swap instantly,
+   not animate one-by-one across the page. */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-transition * {
+    transition: none !important;
+  }
+}
+
 /* Dashboard hero floating stars */
 @keyframes hero-star-float {
   0%,

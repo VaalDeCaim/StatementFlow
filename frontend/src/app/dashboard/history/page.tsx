@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import {Download, MoreVertical, Eye, Copy, Trash2} from "lucide-react";
+import {Download, MoreVertical, Eye, Copy, Trash2, History} from "lucide-react";
 import {useDeleteJobMutation, useJobs} from "@/lib/queries";
 import {realDownloadExport, realPreviewExport} from "@/lib/convert-api";
 import {
@@ -222,9 +222,14 @@ export default function HistoryPage() {
           <TableBody
             items={rowItems}
             emptyContent={
-              <div className="px-4 py-12 text-center text-sm text-default-500">
-                You haven&apos;t converted any statements yet. Once you do,
-                they&apos;ll show up here.
+              <div className="flex flex-col items-center justify-center gap-4 px-4 py-16 min-h-[280px]">
+                <div className="rounded-full bg-default-100 p-4">
+                  <History className="h-10 w-10 text-default-400" strokeWidth={1.5} />
+                </div>
+                <p className="text-sm text-default-500 text-center max-w-sm">
+                  You haven&apos;t converted any statements yet. Once you do,
+                  they&apos;ll show up here.
+                </p>
               </div>
             }
           >

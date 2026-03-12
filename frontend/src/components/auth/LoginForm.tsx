@@ -5,7 +5,8 @@ import {useRouter} from "next/navigation";
 import {useForm, Controller} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {Button, Card, CardBody, Input} from "@heroui/react";
-import {setDevUserCookie} from "@/lib/auth-config";
+import {Eye, EyeOff} from "lucide-react";
+import {setDevUserCookie, allowDevMode} from "@/lib/auth-config";
 import {getSupabaseClient} from "@/lib/supabase/client";
 import {
   useSignInMutation,
@@ -21,6 +22,7 @@ export function LoginForm() {
   const supabase = getSupabaseClient();
   const signInMutation = useSignInMutation();
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const {
     control,
     handleSubmit,
@@ -92,7 +94,7 @@ export function LoginForm() {
                   value={field.value ?? ""}
                   onValueChange={field.onChange}
                   name="password"
-                  type="password"
+                  type={isPasswordVisible ? "text" : "password"}
                   label="Password"
                   autoComplete="current-password"
                   placeholder="••••••••"
@@ -100,6 +102,21 @@ export function LoginForm() {
                   classNames={{ label: labelClass }}
                   isInvalid={!!errors.password}
                   errorMessage={errors.password?.message}
+                  endContent={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="focus:outline-none"
+                      onClick={() => setIsPasswordVisible((v) => !v)}
+                      aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                    >
+                      {isPasswordVisible ? (
+                        <EyeOff className="size-4 text-default-400" aria-hidden />
+                      ) : (
+                        <Eye className="size-4 text-default-400" aria-hidden />
+                      )}
+                    </button>
+                  }
                 />
               )}
             />
@@ -126,7 +143,7 @@ export function LoginForm() {
             >
               {signInMutation.isPending ? "Logging in…" : "Log in"}
             </Button>
-            {supabase ? null : (
+            {supabase || !allowDevMode() ? null : (
               <Button
                 type="button"
                 variant="bordered"

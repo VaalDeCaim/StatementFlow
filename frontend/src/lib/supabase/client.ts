@@ -21,8 +21,6 @@ export function getSupabaseClient(): ReturnType<
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  console.log("url", url);
-  console.log("anonKey", anonKey);
   if (!url || !anonKey) return null;
   return createBrowserClient(url, anonKey);
 }

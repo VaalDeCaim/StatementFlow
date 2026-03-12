@@ -15,28 +15,19 @@ export function DashboardView({ initialData }: Props) {
 
   if (isError || (!data && !isLoading)) {
     return (
-      <div className="px-4 py-10">
+      <div className="flex items-center justify-center px-4 py-16">
         <p className="text-sm text-default-600">
-          Auth is not wired yet. Set <code>NO_AUTH=true</code> in{" "}
-          <code>.env.local</code> to see a mock dashboard with sample data.
+          We couldn&apos;t load your dashboard data yet. Try again in a moment.
         </p>
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center px-4 py-16">
-        <p className="text-sm text-default-500">Loading dashboard…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8">
       <DashboardHero />
-      <MetricsGrid metrics={data.metrics} />
-      <RecentItems items={data.recent} />
+      <MetricsGrid metrics={data?.metrics ?? null} isLoading={isLoading && !data} />
+      <RecentItems items={data?.recent ?? null} isLoading={isLoading && !data} />
     </div>
   );
 }

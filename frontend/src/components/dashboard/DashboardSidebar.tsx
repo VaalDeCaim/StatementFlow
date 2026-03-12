@@ -23,7 +23,7 @@ export function DashboardSidebar() {
   const { logout } = useUser();
 
   return (
-    <aside className="flex w-56 flex-col border-r border-default-200 bg-default-50/50">
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-56 flex-col border-r border-default-200 bg-default-50/50">
       <div className="flex h-14 items-center border-b border-default-100 px-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <StatementFlowLogo />

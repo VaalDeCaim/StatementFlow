@@ -21,6 +21,11 @@ type JobRow = {
   transaction_count: number | null;
 };
 
+export type JobsPage = {
+  items: Job[];
+  nextCursor: string | null;
+};
+
 function mapRowToJob(row: JobRow): Job {
   const validationReport: ValidationReport | undefined =
     row.validation_errors != null || row.validation_warnings != null
@@ -62,17 +67,26 @@ const getFunctionsUrl = () => {
   return `${url}/functions/v1`;
 };
 
+/** Headers for Edge Function calls: user JWT + project anon key (gateway requires apikey). */
+async function getEdgeFunctionHeaders(): Promise<Record<string, string>> {
+  const token = await getSessionToken();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!anonKey) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY not set");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+    apikey: anonKey,
+  };
+}
+
 export async function realUploadInit(
   filename: string,
   contentType: string
 ): Promise<UploadInitResponse> {
-  const token = await getSessionToken();
+  const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/uploads-init`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify({ filename, contentType }),
   });
   if (!res.ok) {
@@ -100,13 +114,10 @@ export async function realCreateJob(
   key: string,
   format: ExportFormat
 ): Promise<CreateJobResponse> {
-  const token = await getSessionToken();
+  const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/jobs-create`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify({ key, format }),
   });
   if (!res.ok) {
@@ -116,16 +127,74 @@ export async function realCreateJob(
   return res.json();
 }
 
-export async function realFetchJobs(): Promise<Job[]> {
+export async function realFetchJobsPage(params?: {
+  cursor?: string | null;
+  limit?: number;
+}): Promise<JobsPage> {
   const { getSupabaseClient } = await import("./supabase/client");
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase not configured");
-  const { data, error } = await supabase
+
+  const limit = params?.limit ?? 20;
+
+  let query = supabase
     .from("jobs")
-    .select("id, status, format, file_name, created_at, completed_at, validation_errors, validation_warnings, account_count, transaction_count")
-    .order("created_at", { ascending: false });
+    .select(
+      "id, status, format, file_name, created_at, completed_at, validation_errors, validation_warnings, account_count, transaction_count"
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit + 1);
+
+  if (params?.cursor) {
+    query = query.lt("created_at", params.cursor);
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapRowToJob);
+
+  const rows = (data ?? []) as JobRow[];
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const items = pageRows.map(mapRowToJob);
+  const nextCursor =
+    hasMore && items.length > 0 ? items[items.length - 1]!.createdAt : null;
+
+  return { items, nextCursor };
+}
+
+type TopupBundle = {
+  id: string;
+  coins: number;
+  priceCents: number;
+  label: string;
+};
+
+export async function realFetchTopupBundles(): Promise<TopupBundle[]> {
+  const headers = await getEdgeFunctionHeaders();
+  const res = await fetch(`${getFunctionsUrl()}/topup-bundles`, {
+    method: "GET",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? res.statusText);
+  }
+  const json = (await res.json()) as { bundles?: TopupBundle[] };
+  return json.bundles ?? [];
+}
+
+export async function realTopUp(bundleId: string): Promise<{ balance: number }> {
+  const headers = await getEdgeFunctionHeaders();
+  const res = await fetch(`${getFunctionsUrl()}/topup-bundles`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ bundleId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? res.statusText);
+  }
+  return (await res.json()) as { balance: number };
 }
 
 export async function realGetJobStatus(jobId: string): Promise<Job | null> {
@@ -146,13 +215,10 @@ export async function realDownloadExport(
   jobId: string,
   format: string
 ): Promise<string> {
-  const token = await getSessionToken();
+  const headers = await getEdgeFunctionHeaders();
   const res = await fetch(`${getFunctionsUrl()}/exports-download`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify({ jobId, format }),
   });
   if (!res.ok) {
@@ -162,4 +228,53 @@ export async function realDownloadExport(
   const { url } = await res.json();
   if (!url) throw new Error("No download URL");
   return url;
+}
+
+/** Fetches export file content for in-app preview. Returns text for csv/qbo, ArrayBuffer for xlsx. */
+export async function realPreviewExport(
+  jobId: string,
+  format: string
+): Promise<string | ArrayBuffer> {
+  const headers = await getEdgeFunctionHeaders();
+  const res = await fetch(`${getFunctionsUrl()}/exports-preview`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ jobId, format }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? res.statusText);
+  }
+  const fmt = format.toLowerCase();
+  if (fmt === "xlsx") {
+    return res.arrayBuffer();
+  }
+  return res.text();
+}
+
+/** Calls delete-user Edge Function with a refreshed JWT (avoids "Invalid JWT" from stale tokens). */
+export async function realDeleteAccount(): Promise<void> {
+  const headers = await getEdgeFunctionHeaders();
+  const res = await fetch(`${getFunctionsUrl()}/delete-user`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? res.statusText ?? "Failed to delete account");
+  }
+}
+
+export async function realDeleteJob(jobId: string): Promise<void> {
+  const headers = await getEdgeFunctionHeaders();
+  const res = await fetch(`${getFunctionsUrl()}/job-delete`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({jobId}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error ?? res.statusText ?? "Failed to delete job");
+  }
 }

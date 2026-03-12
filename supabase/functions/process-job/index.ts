@@ -1,4 +1,12 @@
+// This file runs in Supabase Edge Functions (Deno).
+// Our TS tooling doesn't load Deno global types, so declare the minimal surface we use.
+declare const Deno: {
+  env: { get(key: string): string | undefined };
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void;
+};
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
@@ -87,22 +95,122 @@ Deno.serve(async (req) => {
     }
 
     const basePath = `${job.user_id}/${jobId}`;
-    const csvContent = "Date,Description,Amount\n" + (transactions > 0 ? "2025-01-01,Converted," + transactions + "\n" : "");
-    const xlsxContent = "placeholder xlsx";
-    const qboContent = "placeholder qbo";
+    const exportPath = `${basePath}/statement.${job.format}`;
 
-    const formats: { ext: string; body: string; contentType: string }[] = [
-      { ext: "csv", body: csvContent, contentType: "text/csv" },
-      { ext: "xlsx", body: xlsxContent, contentType: "application/octet-stream" },
-      { ext: "qbo", body: qboContent, contentType: "application/octet-stream" },
-    ];
-
-    for (const { ext, body, contentType } of formats) {
-      const exportPath = `${basePath}/statement.${ext}`;
+    if (job.format === "csv") {
+      const csvContent =
+        "Date,Description,Amount\n" +
+        (transactions > 0 ? `2025-01-01,Converted,${transactions}\n` : "");
       const { error: uploadErr } = await supabase.storage
         .from("exports")
-        .upload(exportPath, new Blob([body]), { contentType, upsert: true });
-      if (uploadErr) validationErrors.push(`Failed to write export file: ${ext}`);
+        .upload(exportPath, new Blob([csvContent]), {
+          contentType: "text/csv",
+          upsert: true,
+        });
+      if (uploadErr) validationErrors.push("Failed to write export file: csv");
+    } else if (job.format === "xlsx") {
+      const xlsxBytes = (() => {
+        const aoa: (string | number)[][] = [
+          ["Date", "Description", "Amount"],
+          ...(transactions > 0 ? [["2025-01-01", "Converted", transactions]] : []),
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Statement");
+        const out = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
+        return new Uint8Array(out);
+      })();
+      const { error: uploadErr } = await supabase.storage
+        .from("exports")
+        .upload(exportPath, new Blob([xlsxBytes]), {
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          upsert: true,
+        });
+      if (uploadErr) validationErrors.push("Failed to write export file: xlsx");
+    } else if (job.format === "qbo") {
+      const qboContent = (() => {
+        const now = new Date();
+        const fmt = (d: Date) => {
+          const pad = (n: number) => String(n).padStart(2, "0");
+          return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}${pad(
+            d.getUTCHours()
+          )}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
+        };
+
+        const dtServer = fmt(now) + ".000[-0:UTC]";
+        const dtPosted = fmt(now);
+        const acctId = "0000000000";
+        const bankId = "000000000";
+        const txnList = transactions > 0
+          ? `
+      <STMTTRN>
+        <TRNTYPE>OTHER
+        <DTPOSTED>${dtPosted}
+        <TRNAMT>${Number(transactions).toFixed(2)}
+        <FITID>${jobId}
+        <NAME>Converted transactions
+        <MEMO>${transactions} transaction(s)
+      </STMTTRN>`
+          : "";
+
+        return [
+          "OFXHEADER:100",
+          "DATA:OFXSGML",
+          "VERSION:102",
+          "SECURITY:NONE",
+          "ENCODING:UTF-8",
+          "CHARSET:NONE",
+          "COMPRESSION:NONE",
+          "OLDFILEUID:NONE",
+          "NEWFILEUID:NONE",
+          "",
+          "<OFX>",
+          "  <SIGNONMSGSRSV1>",
+          "    <SONRS>",
+          "      <STATUS>",
+          "        <CODE>0",
+          "        <SEVERITY>INFO",
+          "      </STATUS>",
+          `      <DTSERVER>${dtServer}`,
+          "      <LANGUAGE>ENG",
+          "    </SONRS>",
+          "  </SIGNONMSGSRSV1>",
+          "  <BANKMSGSRSV1>",
+          "    <STMTTRNRS>",
+          `      <TRNUID>${jobId}`,
+          "      <STATUS>",
+          "        <CODE>0",
+          "        <SEVERITY>INFO",
+          "      </STATUS>",
+          "      <STMTRS>",
+          "        <CURDEF>USD",
+          "        <BANKACCTFROM>",
+          `          <BANKID>${bankId}`,
+          `          <ACCTID>${acctId}`,
+          "          <ACCTTYPE>CHECKING",
+          "        </BANKACCTFROM>",
+          "        <BANKTRANLIST>",
+          `          <DTSTART>${dtPosted}`,
+          `          <DTEND>${dtPosted}`,
+          txnList,
+          "        </BANKTRANLIST>",
+          "      </STMTRS>",
+          "    </STMTTRNRS>",
+          "  </BANKMSGSRSV1>",
+          "</OFX>",
+          "",
+        ].join("\n");
+      })();
+
+      const { error: uploadErr } = await supabase.storage
+        .from("exports")
+        .upload(exportPath, new Blob([qboContent]), {
+          contentType: "application/vnd.intu.qbo",
+          upsert: true,
+        });
+      if (uploadErr) validationErrors.push("Failed to write export file: qbo");
+    } else {
+      validationErrors.push("Unsupported export format");
     }
 
     const status = validationErrors.length > 0 ? "failed" : "completed";

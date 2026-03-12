@@ -1,5 +1,4 @@
 // This file runs in Supabase Edge Functions (Deno).
-// Our Next/TS tooling doesn't load Deno's global types, so declare the minimal surface we use.
 declare const Deno: {
   env: { get(key: string): string | undefined };
   serve: (handler: (req: Request) => Response | Promise<Response>) => void;
@@ -7,6 +6,12 @@ declare const Deno: {
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+
+const CONTENT_TYPE: Record<string, string> = {
+  csv: "text/csv",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  qbo: "text/plain",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -67,83 +72,28 @@ Deno.serve(async (req) => {
     }
 
     const path = `${job.user_id}/${jobId}/statement.${format}`;
-    const { data: signed, error } = await supabase.storage
+    const { data: blob, error } = await supabase.storage
       .from("exports")
-      .createSignedUrl(path, 300);
+      .download(path);
 
-    if (error || !signed?.signedUrl) {
+    if (error || !blob) {
       return new Response(
-        JSON.stringify({ error: "Export not found or expired" }),
+        JSON.stringify({ error: "Export not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Local Supabase returns signed URLs with internal hostnames (e.g. kong:8000, supabase_edge_runtime_*).
-    // Rewrite to the public gateway origin so the browser can reach it.
-    const requestOrigin = (() => {
-      try {
-        return new URL(req.url).origin;
-      } catch {
-        return "";
-      }
-    })();
-    const forwardedOrigin = (() => {
-      const proto = req.headers.get("x-forwarded-proto");
-      const host = req.headers.get("x-forwarded-host");
-      if (!proto || !host) return "";
-      return `${proto}://${host}`;
-    })();
-    const envPublicUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    let downloadUrl = signed.signedUrl;
-    const rawPublicOrigin =
-      forwardedOrigin ||
-      requestOrigin ||
-      (() => {
-        try {
-          return envPublicUrl ? new URL(envPublicUrl).origin : "";
-        } catch {
-          return "";
-        }
-      })();
-    const publicOrigin = (() => {
-      if (!rawPublicOrigin) return "";
-      try {
-        const u = new URL(rawPublicOrigin);
-        // In local dev some forwarded/origin values omit the port (e.g. http://127.0.0.1).
-        // Supabase API defaults to 54321, so add it for localhost/127.0.0.1 when missing.
-        const isLocalHost = u.hostname === "127.0.0.1" || u.hostname === "localhost";
-        if (isLocalHost && (u.port == null || u.port === "")) {
-          u.port = "54321";
-        }
-        return u.origin;
-      } catch {
-        return rawPublicOrigin;
-      }
-    })();
+    const contentType = CONTENT_TYPE[format.toLowerCase()] ?? "application/octet-stream";
+    const filename = `statement.${format}`;
 
-    if (publicOrigin) {
-      try {
-        const internal = new URL(downloadUrl);
-        const publicHost = new URL(publicOrigin).host;
-        const isInternalHost =
-          internal.hostname === "kong" ||
-          internal.hostname.includes("kong") ||
-          internal.hostname.startsWith("supabase_") ||
-          internal.hostname.includes("edge_runtime") ||
-          internal.host !== publicHost;
-
-        if (isInternalHost) {
-          downloadUrl = publicOrigin + internal.pathname + internal.search;
-        }
-      } catch {
-        // keep original URL if rewrite fails
-      }
-    }
-
-    return new Response(
-      JSON.stringify({ url: downloadUrl }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(blob, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": contentType,
+        "Content-Disposition": `inline; filename="${filename}"`,
+      },
+    });
   } catch (e) {
     return new Response(
       JSON.stringify({ error: String(e) }),

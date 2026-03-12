@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:full": "concurrently -k -n supabase,web -c yellow,cyan \"cd .. && supabase start\" \"next dev\"",
     "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
@@ -23,6 +24,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.2",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -30,6 +32,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",

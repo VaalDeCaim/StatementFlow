@@ -8,6 +8,7 @@ import type {CurrentUser} from "@/lib/server-data";
 import {setDevUserCookie, clearDevUserCookie} from "@/lib/auth-config";
 import type {LoginInput} from "@/lib/validations/auth";
 import type {SignupInput} from "@/lib/validations/auth";
+import {addToast} from "@heroui/react";
 
 async function fetchUser(): Promise<CurrentUser> {
   const res = await fetch("/api/auth/user", {credentials: "include"});
@@ -239,13 +240,36 @@ export function useUpdatePasswordMutation() {
   return useMutation({
     mutationFn: async (password: string) => {
       if (!supabase) throw new Error("Auth not configured");
-      const { error } = await supabase.auth.updateUser({ password });
+      const {error} = await supabase.auth.updateUser({password});
       if (error) throw new Error(error.message ?? "Failed to update password");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.user });
+      queryClient.invalidateQueries({queryKey: queryKeys.user});
       router.refresh();
       router.push("/dashboard");
+    },
+  });
+}
+
+export function useDeleteAccountMutation() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async () => {
+      const {realDeleteAccount} = await import("@/lib/convert-api");
+      await realDeleteAccount();
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(queryKeys.user, null);
+      queryClient.invalidateQueries({queryKey: queryKeys.user});
+      queryClient.invalidateQueries({queryKey: queryKeys.balance});
+      router.refresh();
+      addToast({
+        title: "Your account has been deleted",
+        timeout: 2000,
+      });
+      router.push("/login");
     },
   });
 }

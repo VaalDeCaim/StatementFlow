@@ -1,9 +1,10 @@
 "use client";
 
-import {useState, useRef} from "react";
-import {useTransition} from "react";
-import {useRouter} from "next/navigation";
-import {Button} from "@heroui/react";
+import { useState } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@heroui/react";
+import { InputOtp } from "@heroui/input-otp";
 import {
   useVerifyOtpMutation,
   useResendConfirmationMutation,
@@ -17,13 +18,12 @@ type Props = {
   email?: string | null;
 };
 
-export function VerifyEmailForm({email}: Props) {
+export function VerifyEmailForm({ email }: Props) {
   const router = useRouter();
-  const [code, setCode] = useState<string[]>(() => Array(CODE_LENGTH).fill(""));
+  const [code, setCode] = useState<string>(() => "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [navLoading, setNavLoading] = useState(false);
-  const cellRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifyMutation = useVerifyOtpMutation();
   const resendMutation = useResendConfirmationMutation();
   const busy =
@@ -32,63 +32,13 @@ export function VerifyEmailForm({email}: Props) {
     verifyMutation.isPending ||
     resendMutation.isPending;
 
-  const codeString = code.join("");
+  const codeString = code;
 
   const goToLogin = () => {
     setNavLoading(true);
     startTransition(() => {
       router.push("/login");
     });
-  };
-
-  const handleCellChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      const digits = value.replace(/\D/g, "").slice(0, CODE_LENGTH).split("");
-      const next = [...code];
-      digits.forEach((d, i) => {
-        if (index + i < CODE_LENGTH) next[index + i] = d;
-      });
-      setCode(next);
-      setError(null);
-      const focusIndex = Math.min(index + digits.length, CODE_LENGTH - 1);
-      cellRefs.current[focusIndex]?.focus();
-      return;
-    }
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const next = [...code];
-    next[index] = digit;
-    setCode(next);
-    setError(null);
-    if (digit && index < CODE_LENGTH - 1) {
-      cellRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleCellKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
-      cellRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleCellPaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, CODE_LENGTH);
-    if (!pasted) return;
-    const digits = pasted.split("");
-    const next = [...code];
-    digits.forEach((d, i) => {
-      if (i < CODE_LENGTH) next[i] = d;
-    });
-    setCode(next);
-    setError(null);
-    const focusIndex = Math.min(digits.length, CODE_LENGTH - 1);
-    cellRefs.current[focusIndex]?.focus();
   };
 
   const handleVerify = (e: React.FormEvent) => {
@@ -105,7 +55,7 @@ export function VerifyEmailForm({email}: Props) {
       return;
     }
     verifyMutation.mutate(
-      {email, token: codeString},
+      { email, token: codeString },
       {
         onError: (err) => setError(err.message ?? "Invalid or expired code"),
       },
@@ -116,7 +66,7 @@ export function VerifyEmailForm({email}: Props) {
     if (!email) return;
     setError(null);
     resendMutation.mutate(email, {
-      onSuccess: () => setCode(Array(CODE_LENGTH).fill("")),
+      onSuccess: () => setCode(""),
       onError: (err) => setError(err.message ?? "Failed to resend"),
     });
   };
@@ -128,30 +78,17 @@ export function VerifyEmailForm({email}: Props) {
           <>
             <div className="justify-center flex flex-col items-center space-y-2">
               <label className={labelClass}>Verification code</label>
-              <div className="flex justify-center gap-2">
-                {Array.from({length: CODE_LENGTH}, (_, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => {
-                      cellRefs.current[i] = el;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete={i === 0 ? "one-time-code" : "off"}
-                    maxLength={CODE_LENGTH}
-                    aria-label={`Digit ${i + 1}`}
-                    value={code[i]}
-                    onChange={(e) => handleCellChange(i, e.target.value)}
-                    onKeyDown={(e) => handleCellKeyDown(i, e)}
-                    onPaste={handleCellPaste}
-                    className={`h-12 w-11 rounded-lg border bg-transparent text-center text-lg font-semibold outline-none transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
-                      error
-                        ? "border-danger focus:border-danger focus:ring-2 focus:ring-danger/20"
-                        : "border-default-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    }`}
-                  />
-                ))}
-              </div>
+              <InputOtp
+                length={CODE_LENGTH}
+                value={code}
+                onValueChange={(value) => {
+                  setCode(value);
+                  setError(null);
+                }}
+                autoFocus
+                autoComplete="one-time-code"
+                isInvalid={!!error}
+              />
               {error ? (
                 <p className="text-xs text-danger" role="alert">
                   {error}
@@ -166,7 +103,7 @@ export function VerifyEmailForm({email}: Props) {
               type="submit"
               color="primary"
               className="w-full"
-              isLoading={verifyMutation.isPending}
+              isLoading={verifyMutation.isPending || isPending}
               isDisabled={busy || !codeString.trim()}
             >
               Verify and continue

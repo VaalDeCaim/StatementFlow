@@ -5,11 +5,12 @@ import { User, Coins } from "lucide-react";
 import { useUser } from "@/lib/auth-context";
 import {useBalance} from "@/lib/queries/use-balance";
 import {ThemeSwitcher} from "@/components/ui/ThemeSwitcher";
+import { Skeleton } from "@heroui/react";
 
 export function DashboardHeader() {
   const router = useRouter();
   const {user} = useUser();
-  const {data: balance} = useBalance();
+  const {data: balance, isLoading: balanceLoading} = useBalance();
 
   const goToTopUp = () => router.push("/dashboard/topup");
   const goToSettings = () => router.push("/dashboard/settings");
@@ -24,7 +25,11 @@ export function DashboardHeader() {
           className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-default-200 bg-default-100 px-3 py-1.5 text-sm font-medium text-default-700 hover:bg-default-200/80 transition-colors"
         >
           <Coins className="h-4 w-4 text-warning-500" />
-          <span>{balance?.coins ?? 0} coins</span>
+          {balanceLoading ? (
+            <Skeleton className="h-3 w-16 rounded-full" />
+          ) : (
+            <span>{balance?.coins ?? 0} coins</span>
+          )}
         </button>
         <button
           type="button"

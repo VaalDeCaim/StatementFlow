@@ -1,14 +1,31 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { realFetchJobs, realGetJobStatus } from "@/lib/convert-api";
-import type { Job } from "@/lib/api-types";
-import { queryKeys } from "@/lib/queries/keys";
+import {useInfiniteQuery, useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {realDeleteJob, realFetchJobsPage, realGetJobStatus} from "@/lib/convert-api";
+import type {Job} from "@/lib/api-types";
+import {queryKeys} from "@/lib/queries/keys";
 
-export function useJobs() {
-  return useQuery({
-    queryKey: queryKeys.jobs,
-    queryFn: realFetchJobs,
+export function useJobs(pageSize = 20) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.jobs, pageSize],
+    initialPageParam: null as string | null,
+    queryFn: ({pageParam}) =>
+      realFetchJobsPage({
+        cursor: pageParam,
+        limit: pageSize,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  });
+}
+
+export function useDeleteJobMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: string) => realDeleteJob(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: queryKeys.jobs});
+    },
   });
 }
 

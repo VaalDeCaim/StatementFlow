@@ -4,4 +4,5 @@ export const queryKeys = {
   jobs: ["jobs"] as const,
   job: (id: string | null) => ["job", id] as const,
   balance: ["balance"] as const,
+  pricing: ["pricing"] as const,
 };

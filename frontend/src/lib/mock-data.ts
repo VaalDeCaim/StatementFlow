@@ -33,8 +33,7 @@ export const mockUser: MockUser = {
 export const mockDashboardData: DashboardData = {
   user: mockUser,
   metrics: [
-    { id: "m1", label: "Parsed Statements", value: "248", trend: "up" },
-    { id: "m3", label: "Exported Reports", value: "41", trend: "up" },
+    { id: "m1", label: "Statement Conversions", value: "12" },
   ],
   recent: [
     {

@@ -1,0 +1,28 @@
+"use client";
+
+import {createBrowserClient} from "@supabase/ssr";
+import type {SupabaseClient} from "@supabase/supabase-js";
+
+export function createClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    );
+  }
+  return createBrowserClient(url, anonKey);
+}
+
+/** Returns a Supabase client when env is configured, otherwise null (e.g. for dev mode without Supabase). */
+export function getSupabaseClient(): ReturnType<
+  typeof createBrowserClient
+> | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  console.log("url", url);
+  console.log("anonKey", anonKey);
+  if (!url || !anonKey) return null;
+  return createBrowserClient(url, anonKey);
+}

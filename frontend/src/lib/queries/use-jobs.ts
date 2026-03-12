@@ -1,29 +1,29 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { mockFetchJobs, mockGetJobStatus } from "@/lib/mock-api";
+import { useQuery } from "@tanstack/react-query";
+import { realFetchJobs, realGetJobStatus } from "@/lib/convert-api";
 import type { Job } from "@/lib/api-types";
+import { queryKeys } from "@/lib/queries/keys";
 
 export function useJobs() {
   return useQuery({
-    queryKey: ["jobs"],
-    queryFn: mockFetchJobs,
+    queryKey: queryKeys.jobs,
+    queryFn: realFetchJobs,
   });
 }
 
 export function useJobStatus(jobId: string | null) {
-  const queryClient = useQueryClient();
   return useQuery({
-    queryKey: ["job", jobId],
-    queryFn: () => (jobId ? mockGetJobStatus(jobId) : null),
+    queryKey: queryKeys.job(jobId),
+    queryFn: () => (jobId ? realGetJobStatus(jobId) : null),
     enabled: !!jobId,
   });
 }
 
 export function usePollJobStatus(jobId: string | null) {
   return useQuery<Job | null>({
-    queryKey: ["job", jobId],
-    queryFn: () => (jobId ? mockGetJobStatus(jobId) : Promise.resolve(null)),
+    queryKey: queryKeys.job(jobId),
+    queryFn: () => (jobId ? realGetJobStatus(jobId) : Promise.resolve(null)),
     enabled: !!jobId,
     refetchInterval: (query) => {
       const data = query.state.data;

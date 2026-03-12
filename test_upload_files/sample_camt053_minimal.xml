@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>MIN001</MsgId>
+      <CreDtTm>2025-03-12T00:00:00Z</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>S1</Id>
+      <Acct>
+        <Id>
+          <IBAN>GB82WEST12345698765432</IBAN>
+        </Id>
+        <Ccy>GBP</Ccy>
+      </Acct>
+      <Ntry>
+        <Amt Ccy="GBP">100.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

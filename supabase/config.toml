@@ -1,0 +1,43 @@
+# Supabase local development config. Run `supabase start` to use.
+project_id = "statementflow"
+
+[api]
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+
+[storage]
+file_size_limit = "50MiB"
+
+# Edge Functions: validate JWT inside the function with getUser() to avoid gateway "Invalid JWT"
+# when using asymmetric JWT keys or local/hosted mismatch. Keep verify_jwt = true in production if desired.
+[functions.uploads-init]
+verify_jwt = false
+[functions.jobs-create]
+verify_jwt = false
+[functions.exports-download]
+verify_jwt = false
+[functions.process-job]
+verify_jwt = false
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/*"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true

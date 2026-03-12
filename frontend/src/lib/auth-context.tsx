@@ -1,19 +1,11 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-import type { MockUser } from "./mock-data";
-
-type User = MockUser | null;
+import { createContext, useContext, type ReactNode } from "react";
+import type { CurrentUser } from "./server-data";
+import { useUserQuery, useSignOutMutation } from "./queries/use-auth";
 
 type UserContextValue = {
-  user: User;
+  user: CurrentUser;
   loading: boolean;
   logout: () => void;
 };
@@ -21,25 +13,26 @@ type UserContextValue = {
 const UserContext = createContext<UserContextValue | undefined>(undefined);
 
 type UserProviderProps = {
-  initialUser: User;
+  initialUser: CurrentUser;
   children: ReactNode;
 };
 
 export function UserProvider({ initialUser, children }: UserProviderProps) {
-  const [user, setUser] = useState<User>(initialUser);
-  const [loading, setLoading] = useState(false);
+  const { data: user, isFetching: loading } = useUserQuery(initialUser);
+  const signOutMutation = useSignOutMutation();
 
-  useEffect(() => {
-    setLoading(false);
-    setUser(initialUser);
-  }, [initialUser]);
-
-  const logout = useCallback(() => {
-    setUser(null);
-  }, []);
+  const logout = () => {
+    signOutMutation.mutate();
+  };
 
   return (
-    <UserContext.Provider value={{ user, loading, logout }}>
+    <UserContext.Provider
+      value={{
+        user: user ?? null,
+        loading,
+        logout,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );
@@ -52,4 +45,3 @@ export function useUser(): UserContextValue {
   }
   return ctx;
 }
-

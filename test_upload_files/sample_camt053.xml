@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>MSG20250312001</MsgId>
+      <CreDtTm>2025-03-12T10:00:00Z</CreDtTm>
+      <MsgRcpt>
+        <Nm>Test Company Ltd</Nm>
+      </MsgRcpt>
+    </GrpHdr>
+    <Stmt>
+      <Id>STMT001</Id>
+      <CreDtTm>2025-03-12T10:00:00Z</CreDtTm>
+      <Acct>
+        <Id>
+          <IBAN>NL12ABNA0123456789</IBAN>
+        </Id>
+        <Ccy>EUR</Ccy>
+      </Acct>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>OPBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Amt Ccy="EUR">1234.56</Amt>
+        <Dt>
+          <Dt>2025-01-01</Dt>
+        </Dt>
+      </Bal>
+      <Ntry>
+        <NtryRef>NTRY001</NtryRef>
+        <Amt Ccy="EUR">500.00</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt>
+          <Dt>2025-01-02</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2025-01-02</Dt>
+        </ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>INV-2025-001</EndToEndId>
+            </Refs>
+            <RmtInf>
+              <Ustrd>Supplier payment</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>NTRY002</NtryRef>
+        <Amt Ccy="EUR">250.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt>
+          <Dt>2025-01-03</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2025-01-03</Dt>
+        </ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf>
+              <Ustrd>Customer refund</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>CLBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Amt Ccy="EUR">984.56</Amt>
+        <Dt>
+          <Dt>2025-01-31</Dt>
+        </Dt>
+      </Bal>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

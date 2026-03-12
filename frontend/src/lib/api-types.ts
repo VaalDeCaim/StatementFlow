@@ -39,6 +39,8 @@ export type UserProfile = {
 export type UploadInitResponse = {
   uploadId: string;
   presignedUrl: string;
+  /** Storage path in raw bucket; use with uploadToSignedUrl and pass to jobs-create as key */
+  key: string;
 };
 
 export type CreateJobResponse = {

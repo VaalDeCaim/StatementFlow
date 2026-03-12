@@ -1,34 +1,46 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Card, CardBody, Input, Checkbox } from "@heroui/react";
-import { setDevUserCookie } from "@/lib/auth-config";
-import { signupSchema, type SignupInput } from "@/lib/validations/auth";
+import {useState} from "react";
+import {useRouter} from "next/navigation";
+import {useForm, Controller} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import {Button, Card, CardBody, Input, Checkbox} from "@heroui/react";
+import {setDevUserCookie} from "@/lib/auth-config";
+import {getSupabaseClient} from "@/lib/supabase/client";
+import {useSignUpMutation} from "@/lib/queries/use-auth";
+import {signupSchema, type SignupInput} from "@/lib/validations/auth";
 
 const labelClass = "text-xs font-medium text-default-700";
 
 export function SignupForm() {
   const router = useRouter();
+  const supabase = getSupabaseClient();
+  const {mutateAsync, isPending, error} = useSignUpMutation();
+
+  const [isSubmitting, setSubmitting] = useState(false);
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: {errors},
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      terms: false,
+      name: "Test User",
+      email: "vaal.de.caim@gmail.com",
+      password: "password123!",
+      confirmPassword: "password123!",
+      terms: true,
     },
   });
 
-  const onSubmit = () => {
-    setDevUserCookie();
-    router.push("/dashboard");
+  const onSubmit = async (data: SignupInput) => {
+    setSubmitting(true);
+    try {
+      await mutateAsync(data);
+    } catch (error) {
+      console.error(error);
+    }
+    setSubmitting(false);
   };
 
   const handleDevContinue = () => {
@@ -39,14 +51,19 @@ export function SignupForm() {
   return (
     <Card shadow="sm" className="border border-default-200">
       <CardBody>
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          {error ? (
+            <p
+              className="rounded-lg bg-danger-50 px-3 py-2 text-xs text-danger-600"
+              role="alert"
+            >
+              {error.message ?? "Oops! Something went wrong!"}
+            </p>
+          ) : null}
           <Controller
             name="name"
             control={control}
-            render={({ field }) => (
+            render={({field}) => (
               <Input
                 {...field}
                 value={field.value ?? ""}
@@ -57,7 +74,7 @@ export function SignupForm() {
                 autoComplete="name"
                 placeholder="Ada Lovelace"
                 labelPlacement="outside"
-                classNames={{ label: labelClass }}
+                classNames={{label: labelClass}}
                 isInvalid={!!errors.name}
                 errorMessage={errors.name?.message}
               />
@@ -66,7 +83,7 @@ export function SignupForm() {
           <Controller
             name="email"
             control={control}
-            render={({ field }) => (
+            render={({field}) => (
               <Input
                 {...field}
                 value={field.value ?? ""}
@@ -77,7 +94,7 @@ export function SignupForm() {
                 autoComplete="email"
                 placeholder="you@company.com"
                 labelPlacement="outside"
-                classNames={{ label: labelClass }}
+                classNames={{label: labelClass}}
                 isInvalid={!!errors.email}
                 errorMessage={errors.email?.message}
               />
@@ -86,7 +103,7 @@ export function SignupForm() {
           <Controller
             name="password"
             control={control}
-            render={({ field }) => (
+            render={({field}) => (
               <Input
                 {...field}
                 value={field.value ?? ""}
@@ -97,7 +114,7 @@ export function SignupForm() {
                 autoComplete="new-password"
                 placeholder="••••••••"
                 labelPlacement="outside"
-                classNames={{ label: labelClass }}
+                classNames={{label: labelClass}}
                 isInvalid={!!errors.password}
                 errorMessage={errors.password?.message}
               />
@@ -106,7 +123,7 @@ export function SignupForm() {
           <Controller
             name="confirmPassword"
             control={control}
-            render={({ field }) => (
+            render={({field}) => (
               <Input
                 {...field}
                 value={field.value ?? ""}
@@ -117,7 +134,7 @@ export function SignupForm() {
                 autoComplete="new-password"
                 placeholder="••••••••"
                 labelPlacement="outside"
-                classNames={{ label: labelClass }}
+                classNames={{label: labelClass}}
                 isInvalid={!!errors.confirmPassword}
                 errorMessage={errors.confirmPassword?.message}
               />
@@ -126,7 +143,7 @@ export function SignupForm() {
           <Controller
             name="terms"
             control={control}
-            render={({ field }) => (
+            render={({field}) => (
               <div className="space-y-1">
                 <Checkbox
                   name="terms"
@@ -138,7 +155,8 @@ export function SignupForm() {
                   }}
                   isInvalid={!!errors.terms}
                 >
-                  I agree to the terms and understand this is a demo environment.
+                  I agree to the terms and understand this is a demo
+                  environment.
                 </Checkbox>
                 {errors.terms?.message ? (
                   <p className="text-xs text-danger">{errors.terms.message}</p>
@@ -151,19 +169,23 @@ export function SignupForm() {
               type="submit"
               color="primary"
               className="w-full"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
+              isDisabled={isPending || isSubmitting}
+              isLoading={isPending || isSubmitting}
             >
-              {isSubmitting ? "Creating account…" : "Create account"}
+              {isPending || isSubmitting
+                ? "Creating account…"
+                : "Create account"}
             </Button>
-            <Button
-              type="button"
-              variant="bordered"
-              className="w-full text-xs"
-              onPress={handleDevContinue}
-            >
-              Continue in dev mode
-            </Button>
+            {supabase ? null : (
+              <Button
+                type="button"
+                variant="bordered"
+                className="w-full text-xs"
+                onPress={handleDevContinue}
+              >
+                Continue in dev mode
+              </Button>
+            )}
           </div>
           <p className="mt-1 flex flex-wrap items-center justify-center gap-x-1 text-center text-xs text-default-500">
             <span>Already have an account?</span>

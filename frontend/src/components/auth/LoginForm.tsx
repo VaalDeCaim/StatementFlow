@@ -1,31 +1,47 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Card, CardBody, Input } from "@heroui/react";
 import { setDevUserCookie } from "@/lib/auth-config";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { useSignInMutation, EmailNotConfirmedError } from "@/lib/queries/use-auth";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 
 const labelClass = "text-xs font-medium text-default-700";
 
 export function LoginForm() {
   const router = useRouter();
+  const supabase = getSupabaseClient();
+  const signInMutation = useSignInMutation();
+  const [authError, setAuthError] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: "vaal.de.caim@gmail.com",
+      password: "password123!",
     },
   });
 
-  const onSubmit = () => {
-    setDevUserCookie();
-    router.push("/dashboard");
+  const onSubmit = (data: LoginInput) => {
+    setAuthError(null);
+    signInMutation.mutate(data, {
+      onError: (err) => {
+        if (err instanceof EmailNotConfirmedError) {
+          router.push(
+            `/signup/verify-email?email=${encodeURIComponent(err.email)}`
+          );
+          return;
+        }
+        setAuthError(err.message ?? "Invalid email or password");
+      },
+    });
   };
 
   const handleDevContinue = () => {
@@ -40,6 +56,11 @@ export function LoginForm() {
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col gap-4"
         >
+          {authError ? (
+            <p className="rounded-lg bg-danger-50 px-3 py-2 text-xs text-danger-600" role="alert">
+              {authError}
+            </p>
+          ) : null}
           <Controller
             name="email"
             control={control}
@@ -99,19 +120,21 @@ export function LoginForm() {
               type="submit"
               color="primary"
               className="w-full"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
+              isDisabled={signInMutation.isPending}
+              isLoading={signInMutation.isPending}
             >
-              {isSubmitting ? "Logging in…" : "Log in"}
+              {signInMutation.isPending ? "Logging in…" : "Log in"}
             </Button>
-            <Button
-              type="button"
-              variant="bordered"
-              className="w-full text-xs"
-              onPress={handleDevContinue}
-            >
-              Continue in dev mode
-            </Button>
+            {supabase ? null : (
+              <Button
+                type="button"
+                variant="bordered"
+                className="w-full text-xs"
+                onPress={handleDevContinue}
+              >
+                Continue in dev mode
+              </Button>
+            )}
           </div>
           <p className="mt-1 flex flex-wrap items-center justify-center gap-x-1 text-center text-xs text-default-500">
             <span>Don&apos;t have an account?</span>

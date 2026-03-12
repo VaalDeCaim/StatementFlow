@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { PageAppear } from "@/components/ui/PageAppear";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { AuthHashHandler } from "@/components/auth/AuthHashHandler";
 import { Providers } from "@/components/providers";
 import { UserProvider } from "@/lib/auth-context";
 import { getCurrentUser } from "@/lib/server-data";
@@ -38,6 +39,7 @@ export default async function RootLayout({
       >
         <div id="root" className="min-h-screen">
           <Providers>
+            <AuthHashHandler />
             <UserProvider initialUser={user}>
               <SiteHeader />
               <PageAppear>{children}</PageAppear>

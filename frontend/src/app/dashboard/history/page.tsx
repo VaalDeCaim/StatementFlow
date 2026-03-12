@@ -2,7 +2,7 @@
 
 import { Download, ChevronDown } from "lucide-react";
 import { useJobs } from "@/lib/queries";
-import { mockDownloadExport } from "@/lib/mock-api";
+import { realDownloadExport } from "@/lib/convert-api";
 import {
   Button,
   Table,
@@ -54,13 +54,17 @@ export default function HistoryPage() {
   const { data: jobs, isLoading, error } = useJobs();
 
   const handleDownload = async (jobId: string, format: ExportFormat) => {
-    const blob = await mockDownloadExport(jobId, format);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `export.${format}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const url = await realDownloadExport(jobId, format);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `export.${format}`;
+      a.rel = "noopener noreferrer";
+      a.target = "_blank";
+      a.click();
+    } catch {
+      // show error (e.g. toast) if needed
+    }
   };
 
   if (isLoading) {

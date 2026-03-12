@@ -2,23 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Card, CardBody, Input } from "@heroui/react";
-import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
+import { useForgotPasswordMutation } from "@/lib/queries/use-auth";
 import { forgotPasswordSchema, type ForgotPasswordInput } from "@/lib/validations/auth";
 
 const labelClass = "text-xs font-medium text-default-700";
 
 export function ForgotPasswordForm() {
   const router = useRouter();
-  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const forgotPasswordMutation = useForgotPasswordMutation();
   const {
     control,
     handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<ForgotPasswordInput>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
@@ -26,64 +26,17 @@ export function ForgotPasswordForm() {
     },
   });
 
-  const email = watch("email");
-
-  const onSubmit = () => {
-    setSubmitted(true);
+  const onSubmit = (data: ForgotPasswordInput) => {
+    setSubmitError(null);
+    forgotPasswordMutation.mutate(data.email, {
+      onSuccess: () => {
+        router.push(
+          `/forgot-password/verify-email?email=${encodeURIComponent(data.email)}`
+        );
+      },
+      onError: (err) => setSubmitError(err.message ?? "Failed to send reset email"),
+    });
   };
-
-  if (submitted) {
-    return (
-      <Card shadow="sm" className="border border-default-200">
-        <CardBody className="space-y-6">
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-success-100">
-              <CheckCircle2 className="size-6 text-success-600" aria-hidden />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">
-              Check your email
-            </h2>
-            <p className="mt-2 text-sm text-default-600">
-              If an account exists for{" "}
-              <span className="font-medium text-foreground">
-                {email || "that address"}
-              </span>
-              , we&apos;ve sent a link to reset your password.
-            </p>
-            <p className="mt-3 text-xs text-default-500">
-              Didn&apos;t get it? Check spam or{" "}
-              <Button
-                as="button"
-                type="button"
-                variant="light"
-                className="min-w-0 font-medium text-foreground"
-                onPress={() => setSubmitted(false)}
-              >
-                try again
-              </Button>
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 pt-2">
-            <Button
-              type="button"
-              color="primary"
-              className="w-full gap-2"
-              startContent={<ArrowLeft className="size-4" aria-hidden />}
-              onPress={() => router.push("/login")}
-            >
-              Back to log in
-            </Button>
-            <Link
-              href="/signup"
-              className="text-center text-xs text-default-500 hover:text-foreground"
-            >
-              Don&apos;t have an account? Sign up
-            </Link>
-          </div>
-        </CardBody>
-      </Card>
-    );
-  }
 
   return (
     <Card shadow="sm" className="border border-default-200">
@@ -92,6 +45,11 @@ export function ForgotPasswordForm() {
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col gap-4"
         >
+          {submitError ? (
+            <p className="rounded-lg bg-danger-50 px-3 py-2 text-xs text-danger-600" role="alert">
+              {submitError}
+            </p>
+          ) : null}
           <Controller
             name="email"
             control={control}
@@ -106,7 +64,7 @@ export function ForgotPasswordForm() {
                 autoComplete="email"
                 placeholder="you@company.com"
                 labelPlacement="outside"
-                description="Enter the email you use to sign in. We'll send a reset link if the account exists."
+                description="Enter the email you use to sign in. We'll send a 6-digit code to reset your password."
                 startContent={<Mail className="size-4 text-default-400" aria-hidden />}
                 classNames={{ label: labelClass }}
                 isInvalid={!!errors.email}
@@ -119,10 +77,10 @@ export function ForgotPasswordForm() {
               type="submit"
               color="primary"
               className="w-full"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
+              isDisabled={forgotPasswordMutation.isPending}
+              isLoading={forgotPasswordMutation.isPending}
             >
-              {isSubmitting ? "Sending…" : "Send reset link"}
+              {forgotPasswordMutation.isPending ? "Sending…" : "Send code"}
             </Button>
             <Button
               type="button"

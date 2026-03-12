@@ -1,14 +1,13 @@
 "use client";
 
-import {useState} from "react";
+import { useState } from "react";
 import Link from "next/link";
-import {usePathname, useRouter} from "next/navigation";
-import {LayoutDashboard, FileUp, History, Wallet, Settings, LogOut} from "lucide-react";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, FileUp, History, Wallet, Settings, LogOut } from "lucide-react";
 import clsx from "clsx";
-import {motion, AnimatePresence} from "framer-motion";
-import {useUser} from "@/lib/auth-context";
-import {clearDevUserCookie} from "@/lib/auth-config";
-import {StatementFlowLogo} from "@/components/layout/StatementFlowLogo";
+import { motion, AnimatePresence } from "framer-motion";
+import { useUser } from "@/lib/auth-context";
+import { StatementFlowLogo } from "@/components/layout/StatementFlowLogo";
 
 const mainNav = [
   {href: "/dashboard", label: "Dashboard", icon: LayoutDashboard},
@@ -20,15 +19,8 @@ const mainNav = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [hovered, setHovered] = useState<string | null>(null);
   const { logout } = useUser();
-
-  const handleLogout = () => {
-    clearDevUserCookie();
-    logout();
-    router.push("/");
-  };
 
   return (
     <aside className="flex w-56 flex-col border-r border-default-200 bg-default-50/50">
@@ -88,8 +80,8 @@ export function DashboardSidebar() {
       <div className="border-t border-default-200 p-3">
         <button
           type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-default-600 transition-colors hover:bg-default-200/80 hover:text-foreground"
+          onClick={logout}
+          className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-default-600 transition-colors hover:bg-default-200/80 hover:text-foreground"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           Logout
